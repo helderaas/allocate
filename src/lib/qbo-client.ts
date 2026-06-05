@@ -63,7 +63,7 @@ export async function fetchAccounts(
 ): Promise<QBOAccount[]> {
   const data = await qboRequest<{ QueryResponse: { Account: QBOAccount[] } }>(
     tenantId, realmId, accessToken, refreshToken, "/query",
-    { query: "SELECT * FROM Account WHERE AccountType = 'Expense' OR AccountType = 'Other Expense' MAXRESULTS 200" }
+    { query: "SELECT * FROM Account MAXRESULTS 200" }
   );
   return data.QueryResponse.Account ?? [];
 }
