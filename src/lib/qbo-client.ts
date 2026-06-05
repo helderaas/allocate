@@ -63,7 +63,7 @@ export async function fetchAccounts(
 ): Promise<QBOAccount[]> {
   const data = await qboRequest<{ QueryResponse: { Account: QBOAccount[] } }>(
     tenantId, realmId, accessToken, refreshToken, "/query",
-    { query: "SELECT * FROM Account MAXRESULTS 200" }
+    { query: "SELECT Id, Name, FullyQualifiedName, AccountType, AccountSubType, Active, SubAccount FROM Account STARTPOSITION 1 MAXRESULTS 100" }
   );
   return data.QueryResponse.Account ?? [];
 }
