@@ -1,0 +1,126 @@
+import axios from "axios";
+import { QBOTokens, QBOAccount, QBOLocation } from "@/types";
+import { getServiceSupabase } from "./supabase";
+
+const QBO_BASE = {
+  sandbox: "https://sandbox-quickbooks.api.intuit.com",
+  production: "https://quickbooks.api.intuit.com",
+};
+
+const env = (process.env.QBO_ENVIRONMENT ?? "sandbox") as "sandbox" | "production";
+
+export async function refreshQBOToken(tenantId: string, refreshToken: string): Promise<QBOTokens> {
+  const params = new URLSearchParams({
+    grant_type: "refresh_token",
+    refresh_token: refreshToken,
+  });
+  const credentials = Buffer.from(
+    `${process.env.QBO_CLIENT_ID}:${process.env.QBO_CLIENT_SECRET}`
+  ).toString("base64");
+
+  const { data } = await axios.post<QBOTokens>(
+    "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer",
+    params.toString(),
+    { headers: { Authorization: `Basic ${credentials}`, "Content-Type": "application/x-www-form-urlencoded" } }
+  );
+
+  const db = getServiceSupabase();
+  await db.from("tenants").update({
+    qbo_access_token: data.access_token,
+    qbo_refresh_token: data.refresh_token,
+    qbo_token_expires_at: new Date(Date.now() + data.expires_in * 1000).toISOString(),
+  }).eq("id", tenantId);
+
+  return data;
+}
+
+export async function qboRequest<T>(
+  tenantId: string, realmId: string, accessToken: string, refreshToken: string,
+  path: string, params?: Record<string, string>
+): Promise<T> {
+  const base = `${QBO_BASE[env]}/v3/company/${realmId}`;
+  try {
+    const { data } = await axios.get<T>(`${base}${path}`, {
+      headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" },
+      params,
+    });
+    return data;
+  } catch (err: unknown) {
+    if (axios.isAxiosError(err) && err.response?.status === 401) {
+      const newTokens = await refreshQBOToken(tenantId, refreshToken);
+      const { data } = await axios.get<T>(`${base}${path}`, {
+        headers: { Authorization: `Bearer ${newTokens.access_token}`, Accept: "application/json" },
+        params,
+      });
+      return data;
+    }
+    throw err;
+  }
+}
+
+export async function fetchAccounts(
+  tenantId: string, realmId: string, accessToken: string, refreshToken: string
+): Promise<QBOAccount[]> {
+  const data = await qboRequest<{ QueryResponse: { Account: QBOAccount[] } }>(
+    tenantId, realmId, accessToken, refreshToken, "/query",
+    { query: "SELECT * FROM Account WHERE AccountType = 'Expense' OR AccountType = 'Other Expense' MAXRESULTS 200" }
+  );
+  return data.QueryResponse.Account ?? [];
+}
+
+export async function fetchLocations(
+  tenantId: string, realmId: string, accessToken: string, refreshToken: string
+): Promise<QBOLocation[]> {
+  const data = await qboRequest<{ QueryResponse: { Department: QBOLocation[] } }>(
+    tenantId, realmId, accessToken, refreshToken, "/query",
+    { query: "SELECT * FROM Department MAXRESULTS 50" }
+  );
+  return data.QueryResponse.Department ?? [];
+}
+
+export async function fetchRevenueByLocation(
+  tenantId: string, realmId: string, accessToken: string, refreshToken: string,
+  startDate: string, endDate: string
+): Promise<Record<string, number>> {
+  const data = await qboRequest<{ Rows: { Row: unknown[] } }>(
+    tenantId, realmId, accessToken, refreshToken,
+    "/reports/ProfitAndLoss",
+    { start_date: startDate, end_date: endDate, summarize_column_by: "Department" }
+  );
+  const revenue: Record<string, number> = {};
+  const rows = data.Rows?.Row ?? [];
+  for (const section of rows as { group?: string; Summary?: { ColData: { value: string }[] } }[]) {
+    if (section.group === "Income" && section.Summary) {
+      section.Summary.ColData.slice(1).forEach((col, i) => {
+        revenue[`loc_${i}`] = parseFloat(col.value) || 0;
+      });
+    }
+  }
+  return revenue;
+}
+
+export async function postJournalEntry(
+  tenantId: string, realmId: string, accessToken: string, refreshToken: string,
+  payload: object
+): Promise<{ Id: string }> {
+  const base = `${QBO_BASE[env]}/v3/company/${realmId}`;
+  try {
+    const { data } = await axios.post<{ JournalEntry: { Id: string } }>(
+      `${base}/journalentry`,
+      payload,
+      { headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json", "Content-Type": "application/json" } }
+    );
+    return data.JournalEntry;
+  } catch (err: unknown) {
+    if (axios.isAxiosError(err) && err.response?.status === 401) {
+      const newTokens = await refreshQBOToken(tenantId, refreshToken);
+      const { data } = await axios.post<{ JournalEntry: { Id: string } }>(
+        `${base}/journalentry`,
+        payload,
+        { headers: { Authorization: `Bearer ${newTokens.access_token}`, Accept: "application/json", "Content-Type": "application/json" } }
+      );
+      return data.JournalEntry;
+    }
+    throw err;
+  }
+}
