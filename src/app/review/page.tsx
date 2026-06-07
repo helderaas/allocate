@@ -30,7 +30,7 @@ function ReviewContent() {
   useEffect(() => {
     async function load() {
       if (!period) return;
-      const res = await fetch("/api/allocations/draft?period=" + period);
+      const res = await fetch("/api/allocations/draft?period=" + period, { cache: "no-store" });
       const data = await res.json();
       if (data.draft) {
         setDraft(data.draft);
@@ -301,4 +301,5 @@ export default function ReviewPage() {
     </Suspense>
   );
 }
-// v3b
+// v4
+
