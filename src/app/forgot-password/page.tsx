@@ -20,7 +20,8 @@ export default function ForgotPasswordPage() {
     );
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/api/auth/callback/email?next=/reset-password`,
+      // Use exact URL registered in Supabase redirect list
+      redirectTo: `${window.location.origin}/api/auth/callback/email`,
     });
 
     if (error) {
@@ -57,7 +58,6 @@ export default function ForgotPasswordPage() {
           <h1 className="text-3xl font-semibold text-gray-900">Allocate</h1>
           <p className="text-gray-500 text-sm mt-1">Reset your password</p>
         </div>
-
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
           <p className="text-sm text-gray-500 mb-4">
             Enter your email and we'll send you a link to reset your password.
@@ -83,7 +83,6 @@ export default function ForgotPasswordPage() {
             </button>
           </form>
         </div>
-
         <a href="/login"
           className="flex items-center justify-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 mt-4">
           <ArrowLeft size={14} /> Back to sign in
