@@ -17,9 +17,7 @@ export default function DashboardPage() {
   const today = new Date();
   const firstOfLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
   const lastOfLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
-
   const fmt = (d: Date) => d.toISOString().split("T")[0];
-
   const [startDate, setStartDate] = useState(fmt(firstOfLastMonth));
   const [endDate, setEndDate] = useState(fmt(lastOfLastMonth));
 
@@ -30,23 +28,19 @@ export default function DashboardPage() {
   const runAllocation = async () => {
     setRunning(true);
     setError("");
-    try {
-      const res = await fetch("/api/allocations/run", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ period, startDate, endDate }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? "Something went wrong");
-        setRunning(false);
-        return;
-      }
-      router.push(`/review?period=${period}`);
-    } catch {
-      setError("Network error — please try again");
+    const res = await fetch("/api/allocations/run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ period, startDate, endDate }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setError(data.error ?? "Something went wrong");
       setRunning(false);
+      return;
     }
+    router.push("/review?period=" + period);
+    setRunning(false);
   };
 
   return (
@@ -57,14 +51,12 @@ export default function DashboardPage() {
           <Settings size={14} /> Settings
         </a>
       </nav>
-
       <div className="max-w-3xl mx-auto py-10 px-4">
         <div className="flex items-start justify-between mb-8">
           <div>
             <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
             <p className="text-gray-500 text-sm mt-0.5">Lakewood Medical Group LLC</p>
           </div>
-
           <div className="flex flex-col items-end gap-3">
             <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-2">
               <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
@@ -74,22 +66,16 @@ export default function DashboardPage() {
                 className="text-sm text-gray-700 border-none outline-none bg-transparent" />
             </div>
             <button onClick={runAllocation} disabled={running}
-              className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-xl font-medium text-sm"
-            >
+              className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-xl font-medium text-sm">
               {running
-                ? <><Loader2 size={16} className="animate-spin" /> Calculating...</>
-                : <>{`Run ${periodLabel}`} <ArrowRight size={16} /></>
-              }
+                ? <><Loader2 size={16} className="animate-spin" /><span>Calculating...</span></>
+                : <><span>{"Run " + periodLabel}</span><ArrowRight size={16} /></>}
             </button>
           </div>
         </div>
-
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 text-red-700 text-sm">
-            {error}
-          </div>
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 text-red-700 text-sm">{error}</div>
         )}
-
         <div className="grid grid-cols-3 gap-4 mb-8">
           {[
             { label: "Accounts configured", value: "36" },
@@ -102,13 +88,27 @@ export default function DashboardPage() {
             </div>
           ))}
         </div>
-
         <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-3">Allocation history</h2>
         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
           {mockAllocations.map((a, i) => (
-            <div key={i}
-              onClick={() => router.push(`/review?period=${a.period}`)}
-              className="flex items-center gap-4 p-4 border-b border-gray-100 last:border-0 hover:bg-gray-50 cursor-pointer"
-            >
+            <div key={i} onClick={() => router.push("/review?period=" + a.period)}
+              className="flex items-center gap-4 p-4 border-b border-gray-100 last:border-0 hover:bg-gray-50 cursor-pointer">
               <div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center">
-                <Calendar size={16} className="text-indigo-500" /
+                <Calendar size={16} className="text-indigo-500" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-gray-900">{a.label}</p>
+                <p className="text-xs text-gray-400">{"Created " + a.createdAt}</p>
+              </div>
+              <p className="text-sm font-medium text-gray-900">{"$" + a.total.toLocaleString()}</p>
+              <div className="flex items-center gap-1.5 text-xs font-medium text-green-600">
+                {a.status === "posted" ? <CheckCircle size={14} /> : <Clock size={14} />}
+                <span>{a.status.charAt(0).toUpperCase() + a.status.slice(1)}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
