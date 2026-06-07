@@ -8,13 +8,11 @@ const PUBLIC_ROUTES = ["/", "/login", "/signup", "/api/auth"];
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Allow public routes
   const isPublic = PUBLIC_ROUTES.some(route =>
     pathname === route || pathname.startsWith(route + "/")
   );
   if (isPublic) return NextResponse.next();
 
-  // Create response that we'll potentially modify
   let response = NextResponse.next({ request: req });
 
   const supabase = createServerClient(
@@ -22,7 +20,13 @@ export async function middleware(req: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() { return req.cookies.getAll(); },
+        getAll() {
+          return req.cookies.getAll().map(cookie => ({
+            name: cookie.name,
+            // Decode URL-encoded cookie values
+            value: decodeURIComponent(cookie.value),
+          }));
+        },
         setAll(cookiesToSet: CookieToSet[]) {
           cookiesToSet.forEach(({ name, value }) => req.cookies.set(name, value));
           response = NextResponse.next({ request: req });
@@ -34,7 +38,6 @@ export async function middleware(req: NextRequest) {
     }
   );
 
-  // Refresh the session — this updates cookies if needed
   const { data: { session } } = await supabase.auth.getSession();
 
   if (!session) {
