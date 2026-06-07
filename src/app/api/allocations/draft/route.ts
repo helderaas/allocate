@@ -19,5 +19,9 @@ export async function GET(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 404 });
 
-  return NextResponse.json({ draft });
-}
+  return NextResponse.json({ draft }, {
+  headers: {
+    'Cache-Control': 'no-store, no-cache, must-revalidate',
+    'Pragma': 'no-cache',
+  }
+});
