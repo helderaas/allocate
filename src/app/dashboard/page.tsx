@@ -2,8 +2,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Calendar, ArrowRight, CheckCircle, Clock, Settings,
-  Loader2, Plus, ChevronRight, BookOpen, Trash2, Play, X, XCircle,
+  Calendar, CheckCircle, Clock, Settings,
+  Loader2, Plus, ChevronRight, BookOpen, Trash2, Play, X, XCircle, History,
 } from "lucide-react";
 
 interface AllocationDraftRow {
@@ -32,15 +32,13 @@ interface Template {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [history, setHistory] = useState<AllocationDraftRow[]>([]);
+  const [allHistory, setAllHistory] = useState<AllocationDraftRow[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [templatesLoading, setTemplatesLoading] = useState(true);
 
-  // "New Allocation" launch modal state
   const [showLaunchModal, setShowLaunchModal] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("fresh");
-  const [runningTemplateId, setRunningTemplateId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [voidingId, setVoidingId] = useState<string | null>(null);
   const [showVoidConfirm, setShowVoidConfirm] = useState<string | null>(null);
@@ -50,7 +48,7 @@ export default function DashboardPage() {
       const res = await fetch("/api/allocations/history", { cache: "no-store" });
       if (res.ok) {
         const { drafts } = await res.json();
-        setHistory(drafts ?? []);
+        setAllHistory(drafts ?? []);
       }
     } catch { /* non-blocking */ }
     setHistoryLoading(false);
@@ -72,6 +70,11 @@ export default function DashboardPage() {
     loadTemplates();
   }, [loadHistory, loadTemplates]);
 
+  // Split history into drafts and posted/voided
+  const draftEntries = allHistory.filter(a => a.status === "draft").slice(0, 3);
+  const postedEntries = allHistory.filter(a => a.status === "posted" || a.status === "voided").slice(0, 5);
+  const hasMoreHistory = allHistory.filter(a => a.status === "posted" || a.status === "voided").length > 5;
+
   const handleNewAllocation = () => {
     setSelectedTemplateId("fresh");
     setError("");
@@ -80,12 +83,11 @@ export default function DashboardPage() {
 
   const handleLaunchContinue = () => {
     if (selectedTemplateId === "fresh") {
-      // Go to setup wizard with no pre-population
       router.push("/new-allocation");
     } else {
-      // Go to setup wizard pre-filled from template
       router.push(`/new-allocation?templateId=${selectedTemplateId}&step=dates`);
     }
+    setShowLaunchModal(false);
   };
 
   const deleteTemplate = async (id: string) => {
@@ -119,10 +121,8 @@ export default function DashboardPage() {
     setShowVoidConfirm(null);
   };
 
-  const statusColor = (s: string) =>
-    s === "posted" ? "text-green-600" : s === "voided" ? "text-gray-400" : "text-amber-500";
-  const statusIcon = (s: string) =>
-    s === "posted" ? <CheckCircle size={14} /> : s === "voided" ? <XCircle size={14} /> : <Clock size={14} />;
+  const periodLabel = (period: string) =>
+    new Date(period + "-02").toLocaleString("default", { month: "long", year: "numeric" });
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -149,6 +149,10 @@ export default function DashboardPage() {
           </button>
         </div>
 
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-6 text-red-700 text-sm">{error}</div>
+        )}
+
         {/* Launch modal */}
         {showLaunchModal && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
@@ -162,8 +166,6 @@ export default function DashboardPage() {
               <p className="text-sm text-gray-500 mb-4">
                 Start fresh with a blank setup, or pre-fill from a saved template.
               </p>
-
-              {/* Options */}
               <div className="space-y-2 mb-6">
                 <button
                   onClick={() => setSelectedTemplateId("fresh")}
@@ -216,16 +218,11 @@ export default function DashboardPage() {
                   <p className="text-xs text-gray-400 text-center py-2">No saved templates yet.</p>
                 )}
               </div>
-
-              {error && (
-                <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4 text-red-700 text-sm">{error}</div>
-              )}
-
               <button
                 onClick={handleLaunchContinue}
                 className="w-full flex items-center justify-center gap-2 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium text-sm"
               >
-                Continue <ArrowRight size={16} />
+                Continue <ChevronRight size={16} />
               </button>
             </div>
           </div>
@@ -253,19 +250,10 @@ export default function DashboardPage() {
                   <p className="text-xs text-gray-400">{t.rules.length} account{t.rules.length !== 1 ? "s" : ""}</p>
                 </div>
                 <button
-                  onClick={() => {
-                    setSelectedTemplateId(t.id);
-                    setShowLaunchModal(true);
-                  }}
-                  disabled={runningTemplateId === t.id}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white text-xs font-medium rounded-lg"
+                  onClick={() => { setSelectedTemplateId(t.id); setShowLaunchModal(true); }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg"
                 >
-                  {runningTemplateId === t.id ? (
-                    <Loader2 size={12} className="animate-spin" />
-                  ) : (
-                    <Play size={12} />
-                  )}
-                  Use
+                  <Play size={12} /> Use
                 </button>
                 <button
                   onClick={() => deleteTemplate(t.id)}
@@ -278,51 +266,85 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Allocation History */}
-        <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-3">Allocation History</h2>
-        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+        {/* In Progress — drafts */}
+        {!historyLoading && draftEntries.length > 0 && (
+          <>
+            <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-3">In Progress</h2>
+            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden mb-8">
+              {draftEntries.map(a => (
+                <div
+                  key={a.id}
+                  onClick={() => router.push("/review?period=" + a.period + "&t=" + Date.now())}
+                  className="flex items-center gap-4 p-4 border-b border-gray-100 last:border-0 hover:bg-gray-50 cursor-pointer"
+                >
+                  <div className="w-8 h-8 bg-amber-50 rounded-lg flex items-center justify-center shrink-0">
+                    <Clock size={15} className="text-amber-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900">{periodLabel(a.period)}</p>
+                    <p className="text-xs text-gray-400 truncate">{a.description || "Division allocation"}</p>
+                  </div>
+                  <span className="text-xs font-medium text-amber-500">Draft</span>
+                  <ChevronRight size={14} className="text-gray-300" />
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Recent Posted */}
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide">Recent Allocations</h2>
+          <button
+            onClick={() => router.push("/history")}
+            className="flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-700 font-medium"
+          >
+            <History size={13} /> View full history
+          </button>
+        </div>
+        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden mb-4">
           {historyLoading ? (
             <div className="p-6 flex items-center justify-center gap-2 text-gray-400 text-sm">
               <Loader2 size={16} className="animate-spin" /> Loading...
             </div>
-          ) : history.length === 0 ? (
-            <div className="p-6 text-center text-sm text-gray-400">No allocations yet.</div>
+          ) : postedEntries.length === 0 ? (
+            <div className="p-6 text-center text-sm text-gray-400">No posted allocations yet.</div>
           ) : (
-            history.map(a => (
-              <div
-                key={a.id}
-                onClick={() => router.push("/review?period=" + a.period + "&t=" + Date.now())}
-                className="flex items-center gap-4 p-4 border-b border-gray-100 last:border-0 hover:bg-gray-50 cursor-pointer"
-              >
-                <div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center shrink-0">
-                  <Calendar size={16} className="text-indigo-500" />
+            postedEntries.map(a => (
+              <div key={a.id} className="flex items-center gap-4 p-4 border-b border-gray-100 last:border-0">
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                  a.status === "posted" ? "bg-green-50" : "bg-gray-100"
+                }`}>
+                  <Calendar size={15} className={a.status === "posted" ? "text-green-500" : "text-gray-400"} />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900">
-                    {new Date(a.period + "-02").toLocaleString("default", {
-                      month: "long",
-                      year: "numeric",
-                    })}
+                <div
+                  className="flex-1 min-w-0 cursor-pointer"
+                  onClick={() => router.push("/review?period=" + a.period + "&t=" + Date.now())}
+                >
+                  <p className={`text-sm font-medium ${a.status === "voided" ? "text-gray-400 line-through" : "text-gray-900"}`}>
+                    {periodLabel(a.period)}
                   </p>
                   <p className="text-xs text-gray-400 truncate">{a.description || "Division allocation"}</p>
                 </div>
-                <div className={"flex items-center gap-1.5 text-xs font-medium " + statusColor(a.status)}>
-                  {statusIcon(a.status)}
+                <div className={`flex items-center gap-1.5 text-xs font-medium ${
+                  a.status === "posted" ? "text-green-600" : "text-gray-400"
+                }`}>
+                  {a.status === "posted" ? <CheckCircle size={14} /> : <XCircle size={14} />}
                   <span>{a.status.charAt(0).toUpperCase() + a.status.slice(1)}</span>
                 </div>
                 {a.status === "posted" && (
                   showVoidConfirm === a.id ? (
                     <div className="flex items-center gap-1.5">
-                      <span className="text-xs text-gray-500">Void this JE?</span>
+                      <span className="text-xs text-gray-500">Void this?</span>
                       <button
-                        onClick={e => { e.stopPropagation(); voidAllocation(a.id); }}
+                        onClick={() => voidAllocation(a.id)}
                         disabled={voidingId === a.id}
                         className="px-2 py-1 text-xs bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium disabled:opacity-60"
                       >
                         {voidingId === a.id ? <Loader2 size={10} className="animate-spin" /> : "Confirm"}
                       </button>
                       <button
-                        onClick={e => { e.stopPropagation(); setShowVoidConfirm(null); }}
+                        onClick={() => setShowVoidConfirm(null)}
                         className="px-2 py-1 text-xs border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50"
                       >
                         Cancel
@@ -330,22 +352,28 @@ export default function DashboardPage() {
                     </div>
                   ) : (
                     <button
-                      onClick={e => { e.stopPropagation(); setShowVoidConfirm(a.id); }}
+                      onClick={() => setShowVoidConfirm(a.id)}
                       className="flex items-center gap-1 px-2 py-1 text-xs border border-red-200 text-red-400 hover:bg-red-50 rounded-lg"
                     >
                       <XCircle size={11} /> Void
                     </button>
                   )
                 )}
-                {a.status !== "posted" && <ChevronRight size={14} className="text-gray-300" />}
               </div>
             ))
           )}
         </div>
+
+        {hasMoreHistory && (
+          <button
+            onClick={() => router.push("/history")}
+            className="w-full py-2.5 border border-gray-200 rounded-xl text-sm text-gray-500 hover:bg-gray-50 flex items-center justify-center gap-2"
+          >
+            <History size={14} /> View all posted allocations
+          </button>
+        )}
       </div>
     </div>
   );
 }
-// v7
-
-
+// v8
