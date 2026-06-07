@@ -4,7 +4,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { AllocationDraft, AllocationLine } from "@/types";
 import {
   CheckCircle, XCircle, Loader2, ArrowLeft,
-  ChevronDown, ChevronUp, BookmarkPlus, X,
+  ChevronDown, ChevronUp, BookmarkPlus, X, Lock, AlertCircle,
 } from "lucide-react";
 
 interface EditableLine extends AllocationLine {
@@ -30,6 +30,13 @@ function ReviewContent() {
   const [defaultDescription, setDefaultDescription] = useState("");
   const [journalNumber, setJournalNumber] = useState("");
   const [expandedLines, setExpandedLines] = useState<Record<number, boolean>>({});
+
+  const [amendNote, setAmendNote] = useState("");
+  const [showAmendNote, setShowAmendNote] = useState(false);
+
+  // Derived: is this entry locked?
+  const isLocked = !!(draft?.locked_at);
+  const isPosted = draft?.status === "posted";
 
   // Save-as-template state
   const [showSaveModal, setShowSaveModal] = useState(false);
@@ -119,6 +126,7 @@ function ReviewContent() {
         description: defaultDescription,
         journalNumber,
         lines: updatedLines,
+        note: amendNote || undefined,
       }),
     });
 
@@ -219,11 +227,12 @@ function ReviewContent() {
             </button>
             <button
               onClick={approve}
-              disabled={posting || !isBalanced}
+              disabled={posting || !isBalanced || isLocked}
               className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-xl font-medium text-sm"
+              title={isLocked ? "Unlock this entry from the History page to make changes" : ""}
             >
-              {posting ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />}
-              {posting ? "Posting..." : "Approve & post to QBO"}
+              {posting ? <Loader2 size={16} className="animate-spin" /> : isLocked ? <Lock size={16} /> : <CheckCircle size={16} />}
+              {posting ? "Posting..." : isLocked ? "Locked" : isPosted ? "Amend & repost to QBO" : "Approve & post to QBO"}
             </button>
           </div>
         </div>
@@ -272,6 +281,32 @@ function ReviewContent() {
                 </>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Locked banner */}
+        {isLocked && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 flex items-center gap-3 text-amber-700 text-sm">
+            <Lock size={16} className="shrink-0" />
+            <span>This allocation is <strong>locked</strong>. To make changes, unlock it from the History page first. You can still void it.</span>
+          </div>
+        )}
+
+        {/* Amend note prompt — shown when editing a posted entry */}
+        {isPosted && !isLocked && (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 text-blue-700 text-sm">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertCircle size={14} />
+              <span className="font-medium">You are amending a posted entry.</span>
+            </div>
+            <p className="text-xs text-blue-600 mb-2">The existing QBO journal entry will be voided and a new one posted. This is logged in the audit trail.</p>
+            <input
+              type="text"
+              value={amendNote}
+              onChange={e => setAmendNote(e.target.value)}
+              placeholder="Reason for amendment (optional)"
+              className="w-full text-xs border border-blue-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:border-blue-400"
+            />
           </div>
         )}
 
@@ -482,6 +517,7 @@ export default function ReviewPage() {
     </Suspense>
   );
 }
-// v10
+// v11
+
 
 
