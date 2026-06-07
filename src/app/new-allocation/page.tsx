@@ -240,7 +240,7 @@ function NewAllocationContent() {
           {templateId ? "New Allocation (from template)" : "New Allocation"}
         </h1>
         <p className="text-gray-500 mb-8 text-sm">
-          {step === "locations" && "Choose which QBO locations represent each division."}
+          {step === "locations" && "Choose which QBO locations represent your two divisions. Multi-division support coming soon."}
           {step === "accounts" && "Choose accounts whose expenses are split between divisions."}
           {step === "splits" && "Set an allocation rule for each account."}
           {step === "dates" && "Choose the period to allocate."}
@@ -526,5 +526,6 @@ export default function NewAllocationPage() {
     </Suspense>
   );
 }
-// v2
+// v3
+
 
