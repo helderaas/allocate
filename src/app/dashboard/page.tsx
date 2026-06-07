@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   Calendar, ArrowRight, CheckCircle, Clock, Settings,
-  Loader2, Plus, ChevronRight, BookOpen, Trash2, Play, X,
+  Loader2, Plus, ChevronRight, BookOpen, Trash2, Play, X, XCircle,
 } from "lucide-react";
 
 interface AllocationDraftRow {
@@ -14,6 +14,8 @@ interface AllocationDraftRow {
   total_debits: number;
   total_credits: number;
   description: string;
+  qbo_journal_entry_id?: string;
+  voided_at?: string;
 }
 
 interface Template {
@@ -40,6 +42,8 @@ export default function DashboardPage() {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("fresh");
   const [runningTemplateId, setRunningTemplateId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [voidingId, setVoidingId] = useState<string | null>(null);
+  const [showVoidConfirm, setShowVoidConfirm] = useState<string | null>(null);
 
   const loadHistory = useCallback(async () => {
     try {
@@ -93,10 +97,32 @@ export default function DashboardPage() {
     loadTemplates();
   };
 
+  const voidAllocation = async (draftId: string) => {
+    setVoidingId(draftId);
+    setError("");
+    try {
+      const res = await fetch("/api/allocations/void", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ draftId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Failed to void allocation");
+      } else {
+        loadHistory();
+      }
+    } catch {
+      setError("Failed to void allocation");
+    }
+    setVoidingId(null);
+    setShowVoidConfirm(null);
+  };
+
   const statusColor = (s: string) =>
-    s === "posted" ? "text-green-600" : "text-amber-500";
+    s === "posted" ? "text-green-600" : s === "voided" ? "text-gray-400" : "text-amber-500";
   const statusIcon = (s: string) =>
-    s === "posted" ? <CheckCircle size={14} /> : <Clock size={14} />;
+    s === "posted" ? <CheckCircle size={14} /> : s === "voided" ? <XCircle size={14} /> : <Clock size={14} />;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -284,7 +310,34 @@ export default function DashboardPage() {
                   {statusIcon(a.status)}
                   <span>{a.status.charAt(0).toUpperCase() + a.status.slice(1)}</span>
                 </div>
-                <ChevronRight size={14} className="text-gray-300" />
+                {a.status === "posted" && (
+                  showVoidConfirm === a.id ? (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs text-gray-500">Void this JE?</span>
+                      <button
+                        onClick={e => { e.stopPropagation(); voidAllocation(a.id); }}
+                        disabled={voidingId === a.id}
+                        className="px-2 py-1 text-xs bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium disabled:opacity-60"
+                      >
+                        {voidingId === a.id ? <Loader2 size={10} className="animate-spin" /> : "Confirm"}
+                      </button>
+                      <button
+                        onClick={e => { e.stopPropagation(); setShowVoidConfirm(null); }}
+                        className="px-2 py-1 text-xs border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={e => { e.stopPropagation(); setShowVoidConfirm(a.id); }}
+                      className="flex items-center gap-1 px-2 py-1 text-xs border border-red-200 text-red-400 hover:bg-red-50 rounded-lg"
+                    >
+                      <XCircle size={11} /> Void
+                    </button>
+                  )
+                )}
+                {a.status !== "posted" && <ChevronRight size={14} className="text-gray-300" />}
               </div>
             ))
           )}
@@ -293,5 +346,6 @@ export default function DashboardPage() {
     </div>
   );
 }
-// v6
+// v7
+
 
