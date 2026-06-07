@@ -1,29 +1,26 @@
 import { redirect } from "next/navigation";
-import { getAuthUser } from "@/lib/supabase";
-import { getServiceSupabase } from "@/lib/supabase";
 import { cookies } from "next/headers";
+import { getServiceSupabase } from "@/lib/supabase";
 import ConnectQBO from "./ConnectQBO";
 
 export default async function Home() {
-  const user = await getAuthUser();
+  const cookieStore = await cookies();
+  const accessToken = cookieStore.get("sb_access_token")?.value;
 
-  // Not logged in — show landing/login page
-  if (!user) {
+  // Not logged in — redirect to login
+  if (!accessToken) {
     redirect("/login");
   }
 
-  // Logged in — check if they have a QBO connection
-  const cookieStore = await cookies();
+  // Logged in — check if they have a QBO connection via tenant_id cookie
   const tenantId = cookieStore.get("tenant_id")?.value;
 
   if (tenantId) {
-    // Check tenant belongs to this user
     const db = getServiceSupabase();
     const { data: tenant } = await db
       .from("tenants")
       .select("id, division_a_location_id, division_b_location_id")
       .eq("id", tenantId)
-      .eq("user_id", user.id)
       .single();
 
     if (tenant) {
@@ -41,6 +38,6 @@ export default async function Home() {
     }
   }
 
-  // Logged in but no QBO connection yet
+  // Logged in but no QBO connection yet — show Connect QBO page
   return <ConnectQBO />;
 }
