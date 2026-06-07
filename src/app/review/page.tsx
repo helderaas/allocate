@@ -87,8 +87,8 @@ function ReviewContent() {
     setExpandedLines(prev => ({ ...prev, [index]: !prev[index] }));
   };
 
-  const totalDebits = lines.reduce((sum, l) => sum + (l.division_b_amount_edited || 0), 0);
-  const totalCredits = lines.reduce((sum, l) => sum + (l.division_a_amount_edited || 0), 0);
+  const totalDebits = lines.reduce((sum, l) => sum + (l.division_a_amount_edited || 0) + (l.division_b_amount_edited || 0), 0);
+  const totalCredits = lines.reduce((sum, l) => sum + (l.division_a_amount_edited || 0) + (l.division_b_amount_edited || 0), 0);
   const isBalanced = Math.abs(totalDebits - totalCredits) < 0.01;
 
   const handleReject = () => {
@@ -356,6 +356,7 @@ function ReviewContent() {
 
           {lines.map((line, i) => (
             <div key={i} className="border-b border-gray-100 last:border-0">
+              {/* Row 1: Debit Division A */}
               <div className="grid grid-cols-12 gap-2 px-4 py-2.5 items-center hover:bg-gray-50">
                 <span className="col-span-3 text-sm font-medium text-gray-900 truncate">{line.account_name}</span>
                 <span className="col-span-2 text-sm text-blue-600">Division A</span>
@@ -368,15 +369,15 @@ function ReviewContent() {
                     placeholder="Line description..."
                   />
                 </div>
-                <span className="col-span-1 text-sm text-right text-gray-400"></span>
                 <div className="col-span-1">
                   <input
                     type="number"
                     value={line.division_a_amount_edited}
                     onChange={e => updateLine(i, "division_a_amount_edited", parseFloat(e.target.value) || 0)}
-                    className="w-full text-xs text-right border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-indigo-400 text-red-500"
+                    className="w-full text-xs text-right border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-indigo-400 text-green-600"
                   />
                 </div>
+                <span className="col-span-1 text-sm text-right text-gray-400"></span>
                 <button
                   onClick={() => toggleLine(i)}
                   className="col-span-1 flex justify-end text-gray-300 hover:text-gray-500"
@@ -385,6 +386,7 @@ function ReviewContent() {
                 </button>
               </div>
 
+              {/* Row 2: Debit Division B */}
               <div className="grid grid-cols-12 gap-2 px-4 py-2.5 items-center hover:bg-gray-50 bg-gray-50/50">
                 <span className="col-span-3 text-sm font-medium text-gray-900 truncate">{line.account_name}</span>
                 <span className="col-span-2 text-sm text-teal-600">Division B</span>
@@ -406,6 +408,26 @@ function ReviewContent() {
                   />
                 </div>
                 <span className="col-span-1 text-sm text-right text-gray-400"></span>
+                <span className="col-span-1"></span>
+              </div>
+
+              {/* Row 3: Credit untagged (no location) — read-only, auto-calculated */}
+              <div className="grid grid-cols-12 gap-2 px-4 py-2.5 items-center bg-gray-100/60">
+                <span className="col-span-3 text-sm font-medium text-gray-900 truncate">{line.account_name}</span>
+                <span className="col-span-2 text-xs text-gray-400 italic">Untagged offset</span>
+                <div className="col-span-4">
+                  <input
+                    type="text"
+                    value={line.division_a_description}
+                    onChange={e => updateLine(i, "division_a_description", e.target.value)}
+                    className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-indigo-400"
+                    placeholder="Line description..."
+                  />
+                </div>
+                <span className="col-span-1 text-sm text-right text-gray-400"></span>
+                <span className="col-span-1 text-xs text-right text-red-500 font-medium pr-1">
+                  {(line.division_a_amount_edited + line.division_b_amount_edited).toFixed(2)}
+                </span>
                 <span className="col-span-1"></span>
               </div>
 
@@ -460,5 +482,6 @@ export default function ReviewPage() {
     </Suspense>
   );
 }
-// v9
+// v10
+
 
