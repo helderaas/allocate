@@ -1,10 +1,5 @@
 "use client";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { createBrowserClient } from "@supabase/ssr";
 
 export default function ConnectQBO() {
   const qboAuthUrl = new URL("https://appcenter.intuit.com/connect/oauth2");
@@ -15,6 +10,10 @@ export default function ConnectQBO() {
   qboAuthUrl.searchParams.set("state", "allocate_connect");
 
   const handleSignOut = async () => {
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
     await supabase.auth.signOut();
     window.location.href = "/login";
   };
@@ -26,16 +25,11 @@ export default function ConnectQBO() {
         <p className="text-gray-500 text-lg mb-8">
           Connect your QuickBooks company to get started.
         </p>
-        <a
-          href={qboAuthUrl.toString()}
-          className="inline-flex items-center justify-center gap-3 w-full py-3 px-6 bg-[#2CA01C] hover:bg-[#238a16] text-white font-medium rounded-xl transition-colors text-base mb-4"
-        >
+        <a href={qboAuthUrl.toString()}
+          className="inline-flex items-center justify-center gap-3 w-full py-3 px-6 bg-[#2CA01C] hover:bg-[#238a16] text-white font-medium rounded-xl transition-colors text-base mb-4">
           Connect to QuickBooks
         </a>
-        <button
-          onClick={handleSignOut}
-          className="text-sm text-gray-400 hover:text-gray-600"
-        >
+        <button onClick={handleSignOut} className="text-sm text-gray-400 hover:text-gray-600">
           Sign out
         </button>
       </div>
