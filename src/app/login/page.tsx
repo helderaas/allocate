@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { createBrowserClient } from "@supabase/ssr";
 import { Loader2, Mail, Lock, ArrowRight } from "lucide-react";
 import { Suspense } from "react";
 
@@ -19,21 +18,22 @@ function LoginContent() {
     setLoading(true);
     setError("");
 
-    // Use createBrowserClient from @supabase/ssr so session is stored in cookies
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+      credentials: "include",
+    });
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const data = await res.json();
 
-    if (error) {
-      setError(error.message);
+    if (!res.ok) {
+      setError(data.error ?? "Invalid email or password");
       setLoading(false);
       return;
     }
 
-    // Hard redirect so middleware picks up the new session cookie
+    // Hard redirect after cookie is set
     window.location.href = returnTo;
   };
 
@@ -51,48 +51,28 @@ function LoginContent() {
               <label className="block text-xs font-medium text-gray-700 mb-1">Email</label>
               <div className="relative">
                 <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  required
+                <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
                   placeholder="you@example.com"
-                  className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-400"
-                />
+                  className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-400" />
               </div>
             </div>
-
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-xs font-medium text-gray-700">Password</label>
-                <a href="/forgot-password" className="text-xs text-indigo-600 hover:text-indigo-700">
-                  Forgot password?
-                </a>
+                <a href="/forgot-password" className="text-xs text-indigo-600 hover:text-indigo-700">Forgot password?</a>
               </div>
               <div className="relative">
                 <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="password"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  required
+                <input type="password" value={password} onChange={e => setPassword(e.target.value)} required
                   placeholder="••••••••"
-                  className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-400"
-                />
+                  className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-400" />
               </div>
             </div>
-
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-red-700 text-xs">
-                {error}
-              </div>
+              <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-red-700 text-xs">{error}</div>
             )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-xl font-medium text-sm"
-            >
+            <button type="submit" disabled={loading}
+              className="w-full flex items-center justify-center gap-2 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-xl font-medium text-sm">
               {loading ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
               {loading ? "Signing in..." : "Sign in"}
             </button>
@@ -101,9 +81,7 @@ function LoginContent() {
 
         <p className="text-center text-sm text-gray-500 mt-4">
           Don&apos;t have an account?{" "}
-          <a href="/signup" className="text-indigo-600 hover:text-indigo-700 font-medium">
-            Sign up
-          </a>
+          <a href="/signup" className="text-indigo-600 hover:text-indigo-700 font-medium">Sign up</a>
         </p>
       </div>
     </div>
@@ -112,15 +90,8 @@ function LoginContent() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="animate-spin" size={20} />
-      </div>
-    }>
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin" size={20} /></div>}>
       <LoginContent />
     </Suspense>
   );
 }
-
-
-// rebuild Sun Jun  7 22:44:03 UTC 2026
