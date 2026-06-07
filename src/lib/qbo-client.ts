@@ -80,14 +80,15 @@ export async function fetchLocations(
 
 // ── Trial Balance ─────────────────────────────────────────────────────────────
 // Returns a map of QBO account ID → net balance for the period.
-// The TrialBalance report rows have ColData arrays: [account name, debit, credit].
-// We return debit - credit so expense accounts come out positive (their natural sign).
+// QBO TrialBalance report returns flat rows (no nesting) where each row has:
+//   ColData[0] = { value: "Account Name", id: "35" }
+//   ColData[1] = { value: "debit amount or empty string" }
+//   ColData[2] = { value: "credit amount or empty string" }
+// We store debit - credit so expense accounts (debit-heavy) come out positive.
 
 interface TBRow {
   ColData?: { value: string; id?: string }[];
   Rows?: { Row?: TBRow[] };
-  type?: string;
-  group?: string;
 }
 
 interface TrialBalanceReport {
@@ -110,28 +111,27 @@ export async function fetchTrialBalance(
 
   const balances: Record<string, number> = {};
 
+  // Walk all rows recursively to handle any nesting QBO might add
   function walkRows(rows: TBRow[]) {
     for (const row of rows) {
-      // Data rows have ColData with an account id in the first cell
-      if (row.ColData && row.ColData.length >= 3) {
-        const accountId = row.ColData[0]?.id;
-        const debit = parseFloat(row.ColData[1]?.value ?? "0") || 0;
-        const credit = parseFloat(row.ColData[2]?.value ?? "0") || 0;
+      const cols = row.ColData;
+      if (cols && cols.length >= 3) {
+        const accountId = cols[0]?.id;
+        // QBO returns empty string "" for the side that has no balance
+        const debit = parseFloat(cols[1]?.value || "0") || 0;
+        const credit = parseFloat(cols[2]?.value || "0") || 0;
         if (accountId) {
-          // Net: debit - credit. For expense accounts this gives the expense amount.
-          // For income accounts this gives a negative (credit-heavy) number.
           balances[accountId] = debit - credit;
         }
       }
-      // Recurse into nested row groups
-      if (row.Rows?.Row) {
+      // Recurse in case QBO ever nests rows (e.g. summary sections)
+      if (row.Rows?.Row?.length) {
         walkRows(row.Rows.Row);
       }
     }
   }
 
-  const topRows = data?.Report?.Rows?.Row ?? [];
-  walkRows(topRows);
+  walkRows(data?.Report?.Rows?.Row ?? []);
 
   return balances;
 }
@@ -141,24 +141,40 @@ export async function fetchTrialBalance(
 // sums total income for each, and returns the percentage split.
 // Falls back to 50/50 if the report returns zeros for both (e.g. sandbox with no data).
 
-interface PLReport {
-  Rows: { Row: TBRow[] };
+interface PLRow {
+  ColData?: { value: string; id?: string }[];
+  Rows?: { Row?: PLRow[] };
+  type?: string;
+  group?: string;
 }
 
-function sumIncomeFromPL(rows: TBRow[]): number {
+interface PLReport {
+  Rows: { Row: PLRow[] };
+}
+
+// Walk P&L rows and sum all income/revenue data rows.
+// QBO P&L structure has Section rows containing nested Data rows.
+// We sum the leaf Data rows (individual income line items) to get total revenue.
+// Section summary rows are skipped to avoid double-counting.
+function sumIncomeFromPL(rows: PLRow[], insideIncome = false): number {
   let total = 0;
   for (const row of rows) {
-    // Summary rows (type=Section, group=Income) contain a summary ColData
-    if (row.group === "Income" && row.ColData) {
-      const val = parseFloat(row.ColData[1]?.value ?? "0") || 0;
+    const rowType = (row as { type?: string }).type;
+    const rowGroup = (row as { group?: string }).group;
+
+    // Track when we enter an Income section
+    const isIncomeSection = rowGroup === "Income" || rowGroup === "OtherIncome";
+    const nowInsideIncome = insideIncome || isIncomeSection;
+
+    if (nowInsideIncome && rowType === "Data" && row.ColData && row.ColData.length >= 2) {
+      // Leaf data row inside an income section — this is an individual revenue line
+      const val = parseFloat(row.ColData[1]?.value || "0") || 0;
       total += val;
     }
-    // Also accumulate individual income line items
-    if (row.ColData && row.ColData.length >= 2 && row.type === "Data") {
-      // We'll let the section summary handle the total — skip raw data rows here
-    }
-    if (row.Rows?.Row) {
-      total += sumIncomeFromPL(row.Rows.Row);
+
+    // Recurse into nested rows
+    if (row.Rows?.Row?.length) {
+      total += sumIncomeFromPL(row.Rows.Row, nowInsideIncome);
     }
   }
   return total;
@@ -198,8 +214,8 @@ export async function fetchRevenueSplit(
     ),
   ]);
 
-  const revenueA = Math.abs(sumIncomeFromPL(plA?.Report?.Rows?.Row ?? []));
-  const revenueB = Math.abs(sumIncomeFromPL(plB?.Report?.Rows?.Row ?? []));
+  const revenueA = Math.abs(sumIncomeFromPL((plA?.Report?.Rows?.Row ?? []) as PLRow[]));
+  const revenueB = Math.abs(sumIncomeFromPL((plB?.Report?.Rows?.Row ?? []) as PLRow[]));
   const totalRevenue = revenueA + revenueB;
 
   // Fall back to 50/50 if no revenue data (avoids division by zero)
@@ -262,3 +278,4 @@ export async function voidJournalEntry(
     throw err;
   }
 }
+
