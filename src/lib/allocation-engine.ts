@@ -13,6 +13,10 @@ interface EditableLine extends AllocationLine {
   division_b_amount_edited?: number;
 }
 
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
 function formatPeriod(period: string): string {
   const [year, month] = period.split("-");
   return new Date(parseInt(year), parseInt(month) - 1, 1)
@@ -34,7 +38,6 @@ export function calculateAllocationLines(
       : (rule.fixed_pct_division_a ?? 50);
     const divisionBPct = 100 - divisionAPct;
 
-    // Only allocate the untagged portion
     const untagged = breakdown.untagged;
 
     return {
@@ -69,9 +72,6 @@ export function buildJournalEntryPayload(
   //   1. Debit  → Division A (their share of untagged)
   //   2. Debit  → Division B (their share of untagged)
   //   3. Credit → No location (washes out the full untagged amount)
-  //
-  // This correctly moves the untagged expense off the "unassigned" balance
-  // and onto the two divisions without touching already-tagged transactions.
 
   const lines = (draft.lines as EditableLine[]).flatMap((line, i) => {
     const memo = line.division_a_description || defaultMemo;
@@ -79,11 +79,9 @@ export function buildJournalEntryPayload(
     const divBAmount = line.division_b_amount_edited ?? line.division_b_amount;
     const untaggedTotal = round2(divAAmount + divBAmount);
 
-    // Skip accounts where the full amount is already tagged — nothing to do
     if (untaggedTotal === 0) return [];
 
     return [
-      // Debit Division A
       {
         Id: String(i * 3 + 1),
         Description: memo,
@@ -95,7 +93,6 @@ export function buildJournalEntryPayload(
           DepartmentRef: { value: divisionALocationId },
         },
       },
-      // Debit Division B
       {
         Id: String(i * 3 + 2),
         Description: memo,
@@ -107,7 +104,6 @@ export function buildJournalEntryPayload(
           DepartmentRef: { value: divisionBLocationId },
         },
       },
-      // Credit untagged total (no department — washes out the unassigned amount)
       {
         Id: String(i * 3 + 3),
         Description: memo,
@@ -116,7 +112,6 @@ export function buildJournalEntryPayload(
         JournalEntryLineDetail: {
           PostingType: "Credit",
           AccountRef: { value: line.account_id },
-          // No DepartmentRef — intentionally untagged to offset the source
         },
       },
     ];
@@ -134,4 +129,3 @@ export function buildJournalEntryPayload(
 
   return payload;
 }
-
