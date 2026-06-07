@@ -93,3 +93,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL("/dashboard?error=qbo_auth_failed", req.url));
   }
 }
+
+
+// v2
