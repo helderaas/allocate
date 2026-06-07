@@ -1,5 +1,4 @@
 "use client";
-import { createBrowserClient } from "@supabase/ssr";
 
 export default function ConnectQBO() {
   const qboAuthUrl = new URL("https://appcenter.intuit.com/connect/oauth2");
@@ -10,11 +9,7 @@ export default function ConnectQBO() {
   qboAuthUrl.searchParams.set("state", "allocate_connect");
 
   const handleSignOut = async () => {
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-    await supabase.auth.signOut();
+    await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
     window.location.href = "/login";
   };
 
