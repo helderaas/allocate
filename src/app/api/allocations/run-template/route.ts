@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServiceSupabase } from "@/lib/supabase";
-import { fetchAccounts } from "@/lib/qbo-client";
+import { fetchGLBalances, fetchRevenueSplit } from "@/lib/qbo-client";
 import { calculateAllocationLines } from "@/lib/allocation-engine";
 
 export async function POST(req: NextRequest) {
@@ -11,7 +11,6 @@ export async function POST(req: NextRequest) {
 
   const db = getServiceSupabase();
 
-  // Load template
   const { data: template } = await db
     .from("allocation_templates")
     .select("*")
@@ -20,7 +19,6 @@ export async function POST(req: NextRequest) {
     .single();
   if (!template) return NextResponse.json({ error: "Template not found" }, { status: 404 });
 
-  // Load tenant
   const { data: tenant } = await db
     .from("tenants")
     .select("*")
@@ -28,31 +26,37 @@ export async function POST(req: NextRequest) {
     .single();
   if (!tenant) return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
 
-  // Use template rules instead of allocation_rules table
   const rules = typeof template.rules === "string"
     ? JSON.parse(template.rules)
     : template.rules;
-
   if (!rules?.length) return NextResponse.json({ error: "Template has no rules" }, { status: 400 });
 
-  const accounts = await fetchAccounts(
-    tenant.id, tenant.qbo_realm_id, tenant.qbo_access_token, tenant.qbo_refresh_token
-  );
+  const accountIds = rules.map((r: { qbo_account_id: string }) => r.qbo_account_id);
 
-  const accountBalances: Record<string, number> = {};
-  for (const account of accounts) {
-    accountBalances[account.Id] = 0;
-  }
+  // Same GL-based approach as run/route.ts
+  const [glBalances, revenueSplit] = await Promise.all([
+    fetchGLBalances(
+      tenant.id, tenant.qbo_realm_id,
+      tenant.qbo_access_token, tenant.qbo_refresh_token,
+      startDate, endDate,
+      accountIds,
+      tenant.division_a_location_id,
+      tenant.division_b_location_id
+    ),
+    fetchRevenueSplit(
+      tenant.id, tenant.qbo_realm_id,
+      tenant.qbo_access_token, tenant.qbo_refresh_token,
+      startDate, endDate,
+      tenant.division_a_location_id,
+      tenant.division_b_location_id
+    ),
+  ]);
 
-  const lines = calculateAllocationLines(rules, accountBalances, {
-    divisionAPct: 50,
-    divisionBPct: 50,
-  });
+  const lines = calculateAllocationLines(rules, glBalances, revenueSplit);
 
-  const totalDebits = lines.reduce((sum, l) => sum + l.division_b_amount, 0);
-  const totalCredits = lines.reduce((sum, l) => sum + l.division_a_amount, 0);
+  const totalDebits = lines.reduce((sum, l) => sum + l.division_a_amount + l.division_b_amount, 0);
+  const totalCredits = lines.reduce((sum, l) => sum + l.untagged_amount, 0);
 
-  // Delete existing draft for this period and insert fresh
   await db.from("allocation_drafts").delete()
     .eq("tenant_id", tenantId)
     .eq("period", period);
