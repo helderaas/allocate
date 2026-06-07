@@ -1,16 +1,9 @@
 "use client";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
+import { createBrowserClient } from "@supabase/ssr";
 import { Loader2, Mail, Lock, ArrowRight, CheckCircle } from "lucide-react";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
 export default function SignupPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -20,16 +13,15 @@ export default function SignupPage() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password !== confirmPassword) {
-      setError("Passwords don't match");
-      return;
-    }
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters");
-      return;
-    }
+    if (password !== confirmPassword) { setError("Passwords don't match"); return; }
+    if (password.length < 8) { setError("Password must be at least 8 characters"); return; }
     setLoading(true);
     setError("");
+
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
 
     const { error } = await supabase.auth.signUp({
       email,
@@ -39,9 +31,12 @@ export default function SignupPage() {
       },
     });
 
-    if (error) {
-      setError(error.message);
-      setLoading(false);
+    if (error) { setError(error.message); setLoading(false); return; }
+
+    // Auto sign in after signup since email confirm is off
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    if (!signInError) {
+      window.location.href = "/dashboard";
       return;
     }
 
@@ -55,13 +50,8 @@ export default function SignupPage() {
         <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
           <CheckCircle size={32} className="text-green-600" />
         </div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">Check your email</h2>
-        <p className="text-gray-500 text-sm mb-6">
-          We sent a confirmation link to <strong>{email}</strong>. Click it to activate your account.
-        </p>
-        <a href="/login" className="text-indigo-600 text-sm font-medium hover:text-indigo-700">
-          Back to sign in
-        </a>
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">Account created!</h2>
+        <p className="text-gray-500 text-sm mb-6">Redirecting you to the app...</p>
       </div>
     </div>
   );
@@ -80,58 +70,34 @@ export default function SignupPage() {
               <label className="block text-xs font-medium text-gray-700 mb-1">Email</label>
               <div className="relative">
                 <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  required
+                <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
                   placeholder="you@example.com"
-                  className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-400"
-                />
+                  className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-400" />
               </div>
             </div>
-
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Password</label>
               <div className="relative">
                 <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="password"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  required
+                <input type="password" value={password} onChange={e => setPassword(e.target.value)} required
                   placeholder="Min. 8 characters"
-                  className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-400"
-                />
+                  className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-400" />
               </div>
             </div>
-
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Confirm password</label>
               <div className="relative">
                 <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={e => setConfirmPassword(e.target.value)}
-                  required
+                <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required
                   placeholder="••••••••"
-                  className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-400"
-                />
+                  className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-400" />
               </div>
             </div>
-
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-red-700 text-xs">
-                {error}
-              </div>
+              <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-red-700 text-xs">{error}</div>
             )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-xl font-medium text-sm"
-            >
+            <button type="submit" disabled={loading}
+              className="w-full flex items-center justify-center gap-2 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-xl font-medium text-sm">
               {loading ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
               {loading ? "Creating account..." : "Create account"}
             </button>
@@ -140,9 +106,7 @@ export default function SignupPage() {
 
         <p className="text-center text-sm text-gray-500 mt-4">
           Already have an account?{" "}
-          <a href="/login" className="text-indigo-600 hover:text-indigo-700 font-medium">
-            Sign in
-          </a>
+          <a href="/login" className="text-indigo-600 hover:text-indigo-700 font-medium">Sign in</a>
         </p>
       </div>
     </div>
