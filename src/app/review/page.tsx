@@ -75,7 +75,7 @@ function ReviewContent() {
 
   const handleReject = () => {
     // Go back to onboarding account picker with returnTo=dashboard
-    router.push("/onboarding?tenantId=current&returnTo=dashboard");
+    router.push("/onboarding?returnTo=dashboard");
   };
 
   const approve = async () => {
@@ -301,4 +301,4 @@ export default function ReviewPage() {
     </Suspense>
   );
 }
-// v3
+// v3b
