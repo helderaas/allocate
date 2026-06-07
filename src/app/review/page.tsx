@@ -410,10 +410,29 @@ function ReviewContent() {
               </div>
 
               {expandedLines[i] && (
-                <div className="px-4 py-2 bg-indigo-50 text-xs text-indigo-700 border-t border-indigo-100">
-                  Rule: {line.rule_type === "revenue_pct" ? "Revenue %" : "Fixed split"} —
-                  Division A: {line.division_a_pct.toFixed(1)}% /
-                  Division B: {line.division_b_pct.toFixed(1)}%
+                <div className="px-4 py-3 bg-indigo-50 border-t border-indigo-100 space-y-2">
+                  <div className="flex gap-6 text-xs text-indigo-700">
+                    <span>Rule: {line.rule_type === "revenue_pct" ? "Revenue %" : "Fixed split"}</span>
+                    <span>Div A: {line.division_a_pct.toFixed(1)}%</span>
+                    <span>Div B: {line.division_b_pct.toFixed(1)}%</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3 pt-1">
+                    <div className="bg-white rounded-lg px-3 py-2 border border-indigo-100">
+                      <p className="text-xs text-gray-400 mb-0.5">Total balance</p>
+                      <p className="text-sm font-semibold text-gray-900">${(line.total_amount ?? 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                    </div>
+                    <div className="bg-white rounded-lg px-3 py-2 border border-indigo-100">
+                      <p className="text-xs text-gray-400 mb-0.5">Already tagged</p>
+                      <p className="text-sm font-semibold text-green-600">
+                        A: ${(line.already_tagged_a ?? 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} /
+                        B: ${(line.already_tagged_b ?? 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                      </p>
+                    </div>
+                    <div className="bg-white rounded-lg px-3 py-2 border border-indigo-100">
+                      <p className="text-xs text-gray-400 mb-0.5">Being allocated</p>
+                      <p className="text-sm font-semibold text-indigo-600">${(line.untagged_amount ?? 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -441,4 +460,5 @@ export default function ReviewPage() {
     </Suspense>
   );
 }
-// v8
+// v9
+
