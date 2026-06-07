@@ -297,11 +297,20 @@ function ReviewContent() {
   );
 }
 
+function ReviewPageInner() {
+  const params = useSearchParams();
+  const t = params.get("t") ?? "0";
+  return (
+    <ReviewContent key={t} />
+  );
+}
+
 export default function ReviewPage() {
   return (
     <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin" size={20} /></div>}>
-      <ReviewContent />
+      <ReviewPageInner />
     </Suspense>
   );
 }
-// v5
+// v6
+
