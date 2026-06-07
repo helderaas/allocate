@@ -65,7 +65,7 @@ export async function fetchAccounts(
     tenantId, realmId, accessToken, refreshToken, "/query",
     { query: "SELECT Id, Name, FullyQualifiedName, AccountType, AccountSubType, Active, SubAccount FROM Account STARTPOSITION 1 MAXRESULTS 100" }
   );
-  return data.QueryResponse.Account ?? [];
+  return data.QueryResponse?.Account ?? [];
 }
 
 export async function fetchLocations(
@@ -76,27 +76,6 @@ export async function fetchLocations(
     { query: "SELECT * FROM Department MAXRESULTS 50" }
   );
   return data.QueryResponse.Department ?? [];
-}
-
-export async function fetchRevenueByLocation(
-  tenantId: string, realmId: string, accessToken: string, refreshToken: string,
-  startDate: string, endDate: string
-): Promise<Record<string, number>> {
-  const data = await qboRequest<{ Rows: { Row: unknown[] } }>(
-    tenantId, realmId, accessToken, refreshToken,
-    "/reports/ProfitAndLoss",
-    { start_date: startDate, end_date: endDate, summarize_column_by: "Department" }
-  );
-  const revenue: Record<string, number> = {};
-  const rows = data.Rows?.Row ?? [];
-  for (const section of rows as { group?: string; Summary?: { ColData: { value: string }[] } }[]) {
-    if (section.group === "Income" && section.Summary) {
-      section.Summary.ColData.slice(1).forEach((col, i) => {
-        revenue[`loc_${i}`] = parseFloat(col.value) || 0;
-      });
-    }
-  }
-  return revenue;
 }
 
 export async function postJournalEntry(
@@ -120,6 +99,30 @@ export async function postJournalEntry(
         { headers: { Authorization: `Bearer ${newTokens.access_token}`, Accept: "application/json", "Content-Type": "application/json" } }
       );
       return data.JournalEntry;
+    }
+    throw err;
+  }
+}
+
+export async function voidJournalEntry(
+  tenantId: string, realmId: string, accessToken: string, refreshToken: string,
+  journalEntryId: string
+): Promise<void> {
+  const base = `${QBO_BASE[env]}/v3/company/${realmId}`;
+  try {
+    await axios.post(
+      `${base}/journalentry?operation=void`,
+      { Id: journalEntryId, SyncToken: "0" },
+      { headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json", "Content-Type": "application/json" } }
+    );
+  } catch (err: unknown) {
+    if (axios.isAxiosError(err) && err.response?.status === 401) {
+      const newTokens = await refreshQBOToken(tenantId, refreshToken);
+      await axios.post(
+        `${base}/journalentry?operation=void`,
+        { Id: journalEntryId, SyncToken: "0" },
+        { headers: { Authorization: `Bearer ${newTokens.access_token}`, Accept: "application/json", "Content-Type": "application/json" } }
+      );
     }
     throw err;
   }

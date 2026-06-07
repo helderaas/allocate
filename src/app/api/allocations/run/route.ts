@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
   const tenantId = req.cookies.get("tenant_id")?.value;
   if (!tenantId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { period, startDate, endDate } = await req.json();
+  const { period, startDate, endDate, jeDate, description, journalNumber } = await req.json();
 
   const db = getServiceSupabase();
 
@@ -33,8 +33,6 @@ export async function POST(req: NextRequest) {
     accountBalances[account.Id] = 0;
   }
 
-  // Use 50/50 as default revenue split until P&L parsing is working
-  // This will be replaced with real revenue data in the next update
   const divAPct = 50;
   const divBPct = 50;
 
@@ -55,6 +53,9 @@ export async function POST(req: NextRequest) {
       lines: JSON.stringify(lines),
       total_debits: totalDebits,
       total_credits: totalCredits,
+      je_date: jeDate,
+      description: description,
+      journal_number: journalNumber,
     }, { onConflict: "tenant_id,period" })
     .select()
     .single();

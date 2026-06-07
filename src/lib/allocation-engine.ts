@@ -44,12 +44,18 @@ export function buildJournalEntryPayload(
   draft: AllocationDraft,
   divisionALocationId: string,
   divisionBLocationId: string,
-  period: string
+  period: string,
+  jeDate?: string,
+  description?: string,
+  journalNumber?: string
 ) {
+  const txnDate = jeDate || (period + "-01");
+  const memo = description || ("Division allocation - " + formatPeriod(period));
+
   const lines = draft.lines.flatMap((line, i) => [
     {
       Id: String(i * 2 + 1),
-      Description: `${line.account_name} — remove Div A over-allocation`,
+      Description: line.account_name + " - remove Div A over-allocation",
       Amount: line.division_a_amount,
       DetailType: "JournalEntryLineDetail",
       JournalEntryLineDetail: {
@@ -60,7 +66,7 @@ export function buildJournalEntryPayload(
     },
     {
       Id: String(i * 2 + 2),
-      Description: `${line.account_name} — add Div B share`,
+      Description: line.account_name + " - add Div B share",
       Amount: line.division_b_amount,
       DetailType: "JournalEntryLineDetail",
       JournalEntryLineDetail: {
@@ -71,9 +77,15 @@ export function buildJournalEntryPayload(
     },
   ]);
 
-  return {
-    TxnDate: `${period}-01`,
-    PrivateNote: `Division allocation — ${formatPeriod(period)}`,
+  const payload: Record<string, unknown> = {
+    TxnDate: txnDate,
+    PrivateNote: memo,
     Line: lines,
   };
+
+  if (journalNumber) {
+    payload.DocNumber = journalNumber;
+  }
+
+  return payload;
 }
