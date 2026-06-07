@@ -20,6 +20,7 @@ function NewAllocationContent() {
   const params = useSearchParams();
   const router = useRouter();
   const templateId = params.get("templateId");
+  const stepParam = params.get("step");
 
   const [step, setStep] = useState<Step>("locations");
   const [locations, setLocations] = useState<QBOLocation[]>([]);
@@ -94,6 +95,13 @@ function NewAllocationContent() {
     }
     load();
   }, [templateId]);
+
+  // If URL says step=dates (coming from template shortcut), jump straight there after load
+  useEffect(() => {
+    if (!loading && stepParam === "dates") {
+      setStep("dates");
+    }
+  }, [loading, stepParam]);
 
   // Apply date preset
   useEffect(() => {
@@ -518,4 +526,5 @@ export default function NewAllocationPage() {
     </Suspense>
   );
 }
-// v1
+// v2
+
