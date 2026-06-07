@@ -1,5 +1,4 @@
 "use client";
-import { createBrowserClient } from "@supabase/ssr";
 import { Settings, LogOut } from "lucide-react";
 
 interface NavProps {
@@ -8,11 +7,7 @@ interface NavProps {
 
 export default function Nav({ showSettings = true }: NavProps) {
   const handleSignOut = async () => {
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-    await supabase.auth.signOut();
+    await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
     window.location.href = "/login";
   };
 
