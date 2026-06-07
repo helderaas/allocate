@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useState, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
-import { useRouter } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { QBOAccount, QBOLocation } from "@/types";
 import { CheckSquare, Square, ChevronRight, Loader2 } from "lucide-react";
 
@@ -15,7 +14,7 @@ interface SelectedAccount {
 function OnboardingContent() {
   const params = useSearchParams();
   const router = useRouter();
-  const tenantId = params.get("tenantId");
+  const tenantIdParam = params.get("tenantId");
   const returnTo = params.get("returnTo");
   const error = params.get("error");
 
@@ -31,15 +30,23 @@ function OnboardingContent() {
   useEffect(() => {
     async function load() {
       setLoading(true);
-      const [locRes, acctRes] = await Promise.all([fetch("/api/qbo/locations"), fetch("/api/qbo/accounts")]);
+      const [locRes, acctRes] = await Promise.all([
+        fetch("/api/qbo/locations"),
+        fetch("/api/qbo/accounts")
+      ]);
       const { locations: locs } = await locRes.json();
       const { accounts: accts } = await acctRes.json();
       setLocations(locs ?? []);
       setAccounts(accts ?? []);
       setLoading(false);
     }
-    if (tenantId) load();
-  }, [tenantId]);
+    // Load if we have a real tenantId OR if returnTo=dashboard (uses cookie)
+    if (tenantIdParam && tenantIdParam !== "current") {
+      load();
+    } else if (returnTo === "dashboard") {
+      load();
+    }
+  }, [tenantIdParam, returnTo]);
 
   if (error) return (
     <div className="min-h-screen flex items-center justify-center">
@@ -85,7 +92,6 @@ function OnboardingContent() {
         })),
       }),
     });
-    // If coming from reject, go back to dashboard. Otherwise show done screen.
     if (returnTo === "dashboard") {
       router.push("/dashboard");
     } else {
@@ -118,7 +124,8 @@ function OnboardingContent() {
                 </div>
               ))}
             </div>
-            <button disabled={!divisionA || !divisionB || divisionA.Id === divisionB.Id} onClick={() => setStep("accounts")}
+            <button disabled={!divisionA || !divisionB || divisionA.Id === divisionB.Id}
+              onClick={() => setStep("accounts")}
               className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white rounded-xl font-medium text-sm flex items-center justify-center gap-2"
             >Next: pick accounts <ChevronRight size={16} /></button>
           </div>
@@ -139,7 +146,9 @@ function OnboardingContent() {
                   <button key={acct.Id} onClick={() => toggleAccount(acct)}
                     className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-gray-50 text-left"
                   >
-                    {selected ? <CheckSquare size={18} className="text-indigo-600 shrink-0" /> : <Square size={18} className="text-gray-300 shrink-0" />}
+                    {selected
+                      ? <CheckSquare size={18} className="text-indigo-600 shrink-0" />
+                      : <Square size={18} className="text-gray-300 shrink-0" />}
                     <div>
                       <p className={"text-sm font-medium " + (acct.SubAccount ? "pl-3 text-gray-600" : "text-gray-900")}>
                         {acct.SubAccount ? "↳ " : ""}{acct.FullyQualifiedName}
@@ -151,7 +160,10 @@ function OnboardingContent() {
               })}
             </div>
             <div className="flex gap-3">
-              <button onClick={() => setStep("locations")} className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50">Back</button>
+              <button onClick={() => setStep("locations")}
+                className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50">
+                Back
+              </button>
               <button disabled={selectedAccounts.length === 0} onClick={() => setStep("splits")}
                 className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white rounded-xl font-medium text-sm flex items-center justify-center gap-2"
               >{selectedAccounts.length} selected — set splits <ChevronRight size={16} /></button>
@@ -168,7 +180,9 @@ function OnboardingContent() {
                 <div key={s.account.Id} className="flex items-center gap-3 p-3 rounded-xl border border-gray-100">
                   <p className="flex-1 text-sm font-medium text-gray-900 truncate">{s.account.FullyQualifiedName}</p>
                   <select value={s.ruleType}
-                    onChange={e => setSelectedAccounts(prev => prev.map(a => a.account.Id === s.account.Id ? { ...a, ruleType: e.target.value as "revenue_pct" | "fixed_split" } : a))}
+                    onChange={e => setSelectedAccounts(prev => prev.map(a =>
+                      a.account.Id === s.account.Id ? { ...a, ruleType: e.target.value as "revenue_pct" | "fixed_split" } : a
+                    ))}
                     className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white"
                   >
                     <option value="revenue_pct">Revenue %</option>
@@ -177,7 +191,9 @@ function OnboardingContent() {
                   {s.ruleType === "fixed_split" && (
                     <div className="flex items-center gap-1">
                       <input type="number" min={0} max={100} value={s.fixedPctA}
-                        onChange={e => setSelectedAccounts(prev => prev.map(a => a.account.Id === s.account.Id ? { ...a, fixedPctA: Number(e.target.value) } : a))}
+                        onChange={e => setSelectedAccounts(prev => prev.map(a =>
+                          a.account.Id === s.account.Id ? { ...a, fixedPctA: Number(e.target.value) } : a
+                        ))}
                         className="w-14 text-xs text-center border border-gray-200 rounded-lg px-1 py-1.5"
                       />
                       <span className="text-xs text-gray-400">/ {100 - s.fixedPctA}%</span>
@@ -187,7 +203,10 @@ function OnboardingContent() {
               ))}
             </div>
             <div className="flex gap-3">
-              <button onClick={() => setStep("accounts")} className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50">Back</button>
+              <button onClick={() => setStep("accounts")}
+                className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50">
+                Back
+              </button>
               <button onClick={saveConfig}
                 className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium text-sm flex items-center justify-center gap-2"
               >Save configuration <ChevronRight size={16} /></button>
@@ -219,5 +238,3 @@ export default function OnboardingPage() {
     </Suspense>
   );
 }
-// v2
-// v3
