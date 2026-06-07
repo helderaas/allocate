@@ -5,30 +5,47 @@ export async function POST(req: NextRequest) {
   const { email, password } = await req.json();
 
   const db = getServiceSupabase();
-  
-  // Sign in using the service role client
+
   const { data, error } = await db.auth.signInWithPassword({ email, password });
 
   if (error || !data.session) {
     return NextResponse.json({ error: error?.message ?? "Invalid credentials" }, { status: 401 });
   }
 
-  // Set a simple session cookie with the access token
   const response = NextResponse.json({ ok: true });
+
+  // Set auth cookies
   response.cookies.set("sb_access_token", data.session.access_token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 7, // 1 week
+    maxAge: 60 * 60 * 24 * 7,
     path: "/",
   });
   response.cookies.set("sb_refresh_token", data.session.refresh_token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 30, // 30 days
+    maxAge: 60 * 60 * 24 * 30,
     path: "/",
   });
+
+  // Look up tenant for this user and set tenant_id cookie
+  const { data: tenant } = await db
+    .from("tenants")
+    .select("id")
+    .eq("user_id", data.user.id)
+    .single();
+
+  if (tenant) {
+    response.cookies.set("tenant_id", tenant.id, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 30,
+      path: "/",
+    });
+  }
 
   return response;
 }
