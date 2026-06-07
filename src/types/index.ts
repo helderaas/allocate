@@ -58,9 +58,13 @@ export interface AllocationLine {
   rule_type: RuleType;
   division_a_pct: number;
   division_b_pct: number;
-  total_amount: number;
-  division_a_amount: number;
-  division_b_amount: number;
+  // GL breakdown — what's already tagged vs what's being allocated
+  total_amount: number;         // full company-wide balance
+  already_tagged_a: number;     // already on Div A — left untouched
+  already_tagged_b: number;     // already on Div B — left untouched
+  untagged_amount: number;      // the portion being allocated by this JE
+  division_a_amount: number;    // Div A share of untagged (debit)
+  division_b_amount: number;    // Div B share of untagged (debit)
 }
 
 export interface AllocationDraft {
