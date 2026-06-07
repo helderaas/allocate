@@ -53,7 +53,7 @@ export default function DashboardPage() {
       setRunning(false);
       return;
     }
-    router.push("/review?period=" + period);
+    router.push("/review?period=" + period + "&t=" + Date.now());
     setRunning(false);
   };
 
