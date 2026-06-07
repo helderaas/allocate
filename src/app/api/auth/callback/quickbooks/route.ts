@@ -86,6 +86,7 @@ export async function GET(req: NextRequest) {
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       maxAge: 60 * 60 * 24 * 30,
+      path: "/",
     });
     return response;
   } catch (err) {
@@ -96,3 +97,4 @@ export async function GET(req: NextRequest) {
 
 
 // v2
+
