@@ -16,7 +16,7 @@ export async function getServerSupabase() {
   return createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
       getAll() { return cookieStore.getAll(); },
-      setAll(cookiesToSet) {
+      setAll(cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]) {
         try {
           cookiesToSet.forEach(({ name, value, options }) =>
             cookieStore.set(name, value, options)
@@ -36,3 +36,4 @@ export async function getAuthUser() {
 
 // Browser/legacy client (used in non-auth contexts)
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
