@@ -37,7 +37,23 @@ export async function GET(req: NextRequest) {
 
     if (error) throw error;
 
-    const response = NextResponse.redirect(new URL(`/onboarding?tenantId=${tenant.id}`, req.url));
+    // Check if this tenant has already completed setup (has divisions + rules)
+    const { data: rules } = await db
+      .from("allocation_rules")
+      .select("id")
+      .eq("tenant_id", tenant.id)
+      .limit(1);
+
+    const isSetupComplete =
+      !!tenant.division_a_location_id &&
+      !!tenant.division_b_location_id &&
+      (rules?.length ?? 0) > 0;
+
+    const redirectPath = isSetupComplete
+      ? "/dashboard"
+      : `/onboarding?tenantId=${tenant.id}`;
+
+    const response = NextResponse.redirect(new URL(redirectPath, req.url));
     response.cookies.set("tenant_id", tenant.id, {
       httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", maxAge: 60 * 60 * 24 * 30,
     });
