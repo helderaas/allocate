@@ -1,10 +1,17 @@
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { getServiceSupabase } from "@/lib/supabase";
 import ConnectQBO from "./ConnectQBO";
 
 export default async function Home() {
   const cookieStore = await cookies();
+  const headerStore = await headers();
+  
+  // Check if this is a password recovery redirect from Supabase
+  // Supabase sends: /?token_hash=xxx&type=recovery
+  // We need to forward to our email callback
+  const url = headerStore.get("x-url") || "";
+  
   const accessToken = cookieStore.get("sb_access_token")?.value;
 
   // Not logged in — redirect to login
@@ -38,6 +45,6 @@ export default async function Home() {
     }
   }
 
-  // Logged in but no QBO connection yet — show Connect QBO page
+  // Logged in but no QBO connection yet
   return <ConnectQBO />;
 }
