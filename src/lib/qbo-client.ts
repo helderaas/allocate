@@ -78,69 +78,104 @@ export async function fetchLocations(
   return data.QueryResponse.Department ?? [];
 }
 
-// ── Trial Balance ─────────────────────────────────────────────────────────────
-// Returns a map of QBO account ID → net balance for the period.
-// QBO TrialBalance report returns flat rows (no nesting) where each row has:
-//   ColData[0] = { value: "Account Name", id: "35" }
-//   ColData[1] = { value: "debit amount or empty string" }
-//   ColData[2] = { value: "credit amount or empty string" }
-// We store debit - credit so expense accounts (debit-heavy) come out positive.
+// ── General Ledger balance extraction ────────────────────────────────────────
+// Parses a GL report response and returns the sum of all Section-level totals.
+// The GL report groups transactions under account sections. Each Section has
+// a Summary with ColData[6] = total amount for that account group.
 
-interface TBRow {
+interface GLRow {
   ColData?: { value: string; id?: string }[];
-  Rows?: { Row?: TBRow[] };
+  Summary?: { ColData?: { value: string }[] };
+  Rows?: { Row?: GLRow[] };
+  type?: string;
+  group?: string;
 }
 
-interface TrialBalanceReport {
-  Rows: { Row: TBRow[] };
+function sumGLSections(rows: GLRow[]): number {
+  let total = 0;
+  for (const row of rows) {
+    // Skip the GrandTotal section — we only want per-account section totals
+    if (row.type === "Section" && row.group !== "GrandTotal" && row.Summary?.ColData) {
+      const val = parseFloat(row.Summary.ColData[6]?.value || "0") || 0;
+      total += val;
+    }
+    if (row.Rows?.Row?.length) {
+      total += sumGLSections(row.Rows.Row);
+    }
+  }
+  return total;
 }
 
-export async function fetchTrialBalance(
+// ── fetchGLBalances ───────────────────────────────────────────────────────────
+// For each configured account, fetches three GL totals:
+//   total     = company-wide balance (no department filter)
+//   taggedA   = transactions already tagged to Division A
+//   taggedB   = transactions already tagged to Division B
+//   untagged  = total - taggedA - taggedB  (what this JE will allocate)
+//
+// All three calls run in parallel per account, then all accounts run in parallel.
+
+export interface GLBreakdown {
+  total: number;
+  taggedA: number;
+  taggedB: number;
+  untagged: number;
+}
+
+export async function fetchGLBalances(
   tenantId: string,
   realmId: string,
   accessToken: string,
   refreshToken: string,
   startDate: string,
-  endDate: string
-): Promise<Record<string, number>> {
-  const data = await qboRequest<{ Report: TrialBalanceReport }>(
-    tenantId, realmId, accessToken, refreshToken,
-    "/reports/TrialBalance",
-    { start_date: startDate, end_date: endDate, accounting_method: "Accrual" }
+  endDate: string,
+  accountIds: string[],
+  divisionALocationId: string,
+  divisionBLocationId: string
+): Promise<Record<string, GLBreakdown>> {
+  const results: Record<string, GLBreakdown> = {};
+
+  // Fetch all accounts in parallel, each with 3 GL calls
+  await Promise.all(
+    accountIds.map(async (accountId) => {
+      const baseParams = {
+        start_date: startDate,
+        end_date: endDate,
+        account: accountId,
+        accounting_method: "Accrual",
+      };
+
+      const [glTotal, glDivA, glDivB] = await Promise.all([
+        qboRequest<{ Rows: { Row: GLRow[] } }>(
+          tenantId, realmId, accessToken, refreshToken,
+          "/reports/GeneralLedger", baseParams
+        ),
+        qboRequest<{ Rows: { Row: GLRow[] } }>(
+          tenantId, realmId, accessToken, refreshToken,
+          "/reports/GeneralLedger",
+          { ...baseParams, department: divisionALocationId }
+        ),
+        qboRequest<{ Rows: { Row: GLRow[] } }>(
+          tenantId, realmId, accessToken, refreshToken,
+          "/reports/GeneralLedger",
+          { ...baseParams, department: divisionBLocationId }
+        ),
+      ]);
+
+      const total = sumGLSections(glTotal?.Rows?.Row ?? []);
+      const taggedA = sumGLSections(glDivA?.Rows?.Row ?? []);
+      const taggedB = sumGLSections(glDivB?.Rows?.Row ?? []);
+      // Guard against negative untagged (shouldn't happen but be safe)
+      const untagged = Math.max(0, total - taggedA - taggedB);
+
+      results[accountId] = { total, taggedA, taggedB, untagged };
+    })
   );
 
-  const balances: Record<string, number> = {};
-
-  // Walk all rows recursively to handle any nesting QBO might add
-  function walkRows(rows: TBRow[]) {
-    for (const row of rows) {
-      const cols = row.ColData;
-      if (cols && cols.length >= 3) {
-        const accountId = cols[0]?.id;
-        // QBO returns empty string "" for the side that has no balance
-        const debit = parseFloat(cols[1]?.value || "0") || 0;
-        const credit = parseFloat(cols[2]?.value || "0") || 0;
-        if (accountId) {
-          balances[accountId] = debit - credit;
-        }
-      }
-      // Recurse in case QBO ever nests rows (e.g. summary sections)
-      if (row.Rows?.Row?.length) {
-        walkRows(row.Rows.Row);
-      }
-    }
-  }
-
-  walkRows(data?.Report?.Rows?.Row ?? []);
-
-  return balances;
+  return results;
 }
 
 // ── P&L Revenue by Division ───────────────────────────────────────────────────
-// Fetches the ProfitAndLoss report filtered to each division location separately,
-// sums total income for each, and returns the percentage split.
-// Falls back to 50/50 if the report returns zeros for both (e.g. sandbox with no data).
-
 interface PLRow {
   ColData?: { value: string; id?: string }[];
   Rows?: { Row?: PLRow[] };
@@ -152,27 +187,16 @@ interface PLReport {
   Rows: { Row: PLRow[] };
 }
 
-// Walk P&L rows and sum all income/revenue data rows.
-// QBO P&L structure has Section rows containing nested Data rows.
-// We sum the leaf Data rows (individual income line items) to get total revenue.
-// Section summary rows are skipped to avoid double-counting.
 function sumIncomeFromPL(rows: PLRow[], insideIncome = false): number {
   let total = 0;
   for (const row of rows) {
-    const rowType = (row as { type?: string }).type;
-    const rowGroup = (row as { group?: string }).group;
-
-    // Track when we enter an Income section
-    const isIncomeSection = rowGroup === "Income" || rowGroup === "OtherIncome";
+    const isIncomeSection = row.group === "Income" || row.group === "OtherIncome";
     const nowInsideIncome = insideIncome || isIncomeSection;
 
-    if (nowInsideIncome && rowType === "Data" && row.ColData && row.ColData.length >= 2) {
-      // Leaf data row inside an income section — this is an individual revenue line
+    if (nowInsideIncome && row.type === "Data" && row.ColData && row.ColData.length >= 2) {
       const val = parseFloat(row.ColData[1]?.value || "0") || 0;
       total += val;
     }
-
-    // Recurse into nested rows
     if (row.Rows?.Row?.length) {
       total += sumIncomeFromPL(row.Rows.Row, nowInsideIncome);
     }
@@ -190,27 +214,16 @@ export async function fetchRevenueSplit(
   divisionALocationId: string,
   divisionBLocationId: string
 ): Promise<{ divisionAPct: number; divisionBPct: number }> {
-  // Fetch P&L for each division in parallel
   const [plA, plB] = await Promise.all([
     qboRequest<{ Report: PLReport }>(
       tenantId, realmId, accessToken, refreshToken,
       "/reports/ProfitAndLoss",
-      {
-        start_date: startDate,
-        end_date: endDate,
-        accounting_method: "Accrual",
-        department: divisionALocationId,
-      }
+      { start_date: startDate, end_date: endDate, accounting_method: "Accrual", department: divisionALocationId }
     ),
     qboRequest<{ Report: PLReport }>(
       tenantId, realmId, accessToken, refreshToken,
       "/reports/ProfitAndLoss",
-      {
-        start_date: startDate,
-        end_date: endDate,
-        accounting_method: "Accrual",
-        department: divisionBLocationId,
-      }
+      { start_date: startDate, end_date: endDate, accounting_method: "Accrual", department: divisionBLocationId }
     ),
   ]);
 
@@ -218,15 +231,14 @@ export async function fetchRevenueSplit(
   const revenueB = Math.abs(sumIncomeFromPL((plB?.Report?.Rows?.Row ?? []) as PLRow[]));
   const totalRevenue = revenueA + revenueB;
 
-  // Fall back to 50/50 if no revenue data (avoids division by zero)
   if (totalRevenue === 0) {
     return { divisionAPct: 50, divisionBPct: 50 };
   }
 
-  const divisionAPct = Math.round((revenueA / totalRevenue) * 10000) / 100; // 2 decimal places
-  const divisionBPct = Math.round((revenueB / totalRevenue) * 10000) / 100;
-
-  return { divisionAPct, divisionBPct };
+  return {
+    divisionAPct: Math.round((revenueA / totalRevenue) * 10000) / 100,
+    divisionBPct: Math.round((revenueB / totalRevenue) * 10000) / 100,
+  };
 }
 
 export async function postJournalEntry(
@@ -236,8 +248,7 @@ export async function postJournalEntry(
   const base = `${QBO_BASE[env]}/v3/company/${realmId}`;
   try {
     const { data } = await axios.post<{ JournalEntry: { Id: string } }>(
-      `${base}/journalentry`,
-      payload,
+      `${base}/journalentry`, payload,
       { headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json", "Content-Type": "application/json" } }
     );
     return data.JournalEntry;
@@ -245,8 +256,7 @@ export async function postJournalEntry(
     if (axios.isAxiosError(err) && err.response?.status === 401) {
       const newTokens = await refreshQBOToken(tenantId, refreshToken);
       const { data } = await axios.post<{ JournalEntry: { Id: string } }>(
-        `${base}/journalentry`,
-        payload,
+        `${base}/journalentry`, payload,
         { headers: { Authorization: `Bearer ${newTokens.access_token}`, Accept: "application/json", "Content-Type": "application/json" } }
       );
       return data.JournalEntry;
@@ -278,4 +288,3 @@ export async function voidJournalEntry(
     throw err;
   }
 }
-
