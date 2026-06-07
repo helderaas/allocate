@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import axios from "axios";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 import { getServiceSupabase } from "@/lib/supabase";
 import { QBOTokens } from "@/types";
 
@@ -9,25 +11,53 @@ export async function GET(req: NextRequest) {
   const realmId = searchParams.get("realmId");
 
   if (!code || !realmId) {
-    return NextResponse.redirect(new URL("/onboarding?error=missing_params", req.url));
+    return NextResponse.redirect(new URL("/dashboard?error=missing_params", req.url));
   }
 
   try {
+    // Get current authenticated user
+    const cookieStore = await cookies();
+    const supabaseAuth = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() { return cookieStore.getAll(); },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          },
+        },
+      }
+    );
+    const { data: { user } } = await supabaseAuth.auth.getUser();
+    if (!user) {
+      return NextResponse.redirect(new URL("/login", req.url));
+    }
+
+    // Exchange code for QBO tokens
     const credentials = Buffer.from(
       `${process.env.QBO_CLIENT_ID}:${process.env.QBO_CLIENT_SECRET}`
     ).toString("base64");
 
     const { data: tokens } = await axios.post<QBOTokens>(
       "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer",
-      new URLSearchParams({ grant_type: "authorization_code", code, redirect_uri: process.env.QBO_REDIRECT_URI! }).toString(),
+      new URLSearchParams({
+        grant_type: "authorization_code",
+        code,
+        redirect_uri: process.env.QBO_REDIRECT_URI!,
+      }).toString(),
       { headers: { Authorization: `Basic ${credentials}`, "Content-Type": "application/x-www-form-urlencoded" } }
     );
 
+    // Upsert tenant linked to this user
     const db = getServiceSupabase();
     const { data: tenant, error } = await db
       .from("tenants")
       .upsert({
         qbo_realm_id: realmId,
+        user_id: user.id,
         qbo_access_token: tokens.access_token,
         qbo_refresh_token: tokens.refresh_token,
         qbo_token_expires_at: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
@@ -37,7 +67,7 @@ export async function GET(req: NextRequest) {
 
     if (error) throw error;
 
-    // Check if this tenant has already completed setup (has divisions + rules)
+    // Check if setup complete
     const { data: rules } = await db
       .from("allocation_rules")
       .select("id")
@@ -49,17 +79,18 @@ export async function GET(req: NextRequest) {
       !!tenant.division_b_location_id &&
       (rules?.length ?? 0) > 0;
 
-    const redirectPath = isSetupComplete
-      ? "/dashboard"
-      : `/onboarding?tenantId=${tenant.id}`;
+    const redirectPath = isSetupComplete ? "/dashboard" : `/onboarding?tenantId=${tenant.id}`;
 
     const response = NextResponse.redirect(new URL(redirectPath, req.url));
     response.cookies.set("tenant_id", tenant.id, {
-      httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", maxAge: 60 * 60 * 24 * 30,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 30,
     });
     return response;
   } catch (err) {
     console.error("QBO OAuth callback error:", err);
-    return NextResponse.redirect(new URL("/onboarding?error=auth_failed", req.url));
+    return NextResponse.redirect(new URL("/dashboard?error=qbo_auth_failed", req.url));
   }
 }
