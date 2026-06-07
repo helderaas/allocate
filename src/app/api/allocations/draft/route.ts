@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServiceSupabase } from "@/lib/supabase";
 
-export async function GET(req: NextRequest) {
+// POST instead of GET so Vercel's edge cache never intercepts this request
+export async function POST(req: NextRequest) {
   const tenantId = req.cookies.get("tenant_id")?.value;
   if (!tenantId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { searchParams } = new URL(req.url);
-  const period = searchParams.get("period");
+  const { period } = await req.json();
   if (!period) return NextResponse.json({ error: "Period required" }, { status: 400 });
 
   const db = getServiceSupabase();
@@ -23,11 +23,5 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error?.message ?? "Not found" }, { status: 404 });
   }
 
-  // _serverTs lets us confirm in the browser that this is a fresh server response
-  return NextResponse.json({ draft: rows[0], _serverTs: new Date().toISOString() }, {
-    headers: {
-      "Cache-Control": "no-store, no-cache, must-revalidate",
-      "Pragma": "no-cache",
-    },
-  });
+  return NextResponse.json({ draft: rows[0] });
 }
