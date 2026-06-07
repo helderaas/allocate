@@ -7,25 +7,29 @@ export async function GET(req: NextRequest) {
 
   const db = getServiceSupabase();
 
-  const { data: tenant } = await db
-    .from("tenants")
-    .select("id, qbo_realm_id, division_a_location_name, division_b_location_name")
-    .eq("id", tenantId)
-    .single();
-
-  const { data: rules } = await db
-    .from("allocation_rules")
-    .select("qbo_account_id, qbo_account_name, rule_type, fixed_pct_division_a")
-    .eq("tenant_id", tenantId);
-
+  // Get the most recent draft and show its full lines
   const { data: drafts } = await db
     .from("allocation_drafts")
-    .select("id, period, status, created_at")
+    .select("id, period, status, created_at, lines, tenant_id")
     .eq("tenant_id", tenantId)
     .order("created_at", { ascending: false })
-    .limit(5);
+    .limit(3);
 
-  return NextResponse.json({ tenantId, tenant, rules, recentDrafts: drafts }, {
+  // Also check: are there ANY drafts in the table for period 2026-05 regardless of tenant?
+  const { data: allDraftsForPeriod } = await db
+    .from("allocation_drafts")
+    .select("id, tenant_id, period, status, created_at")
+    .eq("period", "2026-05")
+    .order("created_at", { ascending: false });
+
+  return NextResponse.json({
+    tenantId,
+    myRecentDrafts: drafts?.map(d => ({
+      ...d,
+      lines: typeof d.lines === "string" ? JSON.parse(d.lines) : d.lines,
+    })),
+    allDraftsForPeriod,
+  }, {
     headers: { "Cache-Control": "no-store" },
   });
 }
