@@ -1,4 +1,5 @@
 import { AllocationRule, AllocationLine, AllocationDraft } from "@/types";
+import { GLBreakdown } from "./qbo-client";
 
 interface RevenueData {
   divisionAPct: number;
@@ -12,10 +13,6 @@ interface EditableLine extends AllocationLine {
   division_b_amount_edited?: number;
 }
 
-function round2(n: number): number {
-  return Math.round(n * 100) / 100;
-}
-
 function formatPeriod(period: string): string {
   const [year, month] = period.split("-");
   return new Date(parseInt(year), parseInt(month) - 1, 1)
@@ -24,15 +21,21 @@ function formatPeriod(period: string): string {
 
 export function calculateAllocationLines(
   rules: AllocationRule[],
-  accountBalances: Record<string, number>,
+  glBalances: Record<string, GLBreakdown>,
   revenue: RevenueData
 ): AllocationLine[] {
   return rules.map((rule) => {
-    const total = accountBalances[rule.qbo_account_id] ?? 0;
+    const breakdown = glBalances[rule.qbo_account_id] ?? {
+      total: 0, taggedA: 0, taggedB: 0, untagged: 0,
+    };
+
     const divisionAPct = rule.rule_type === "revenue_pct"
       ? revenue.divisionAPct
       : (rule.fixed_pct_division_a ?? 50);
     const divisionBPct = 100 - divisionAPct;
+
+    // Only allocate the untagged portion
+    const untagged = breakdown.untagged;
 
     return {
       account_id: rule.qbo_account_id,
@@ -40,9 +43,12 @@ export function calculateAllocationLines(
       rule_type: rule.rule_type,
       division_a_pct: divisionAPct,
       division_b_pct: divisionBPct,
-      total_amount: total,
-      division_a_amount: round2(total * (divisionAPct / 100)),
-      division_b_amount: round2(total * (divisionBPct / 100)),
+      total_amount: breakdown.total,
+      already_tagged_a: breakdown.taggedA,
+      already_tagged_b: breakdown.taggedB,
+      untagged_amount: untagged,
+      division_a_amount: round2(untagged * (divisionAPct / 100)),
+      division_b_amount: round2(untagged * (divisionBPct / 100)),
     };
   });
 }
@@ -59,33 +65,58 @@ export function buildJournalEntryPayload(
   const txnDate = jeDate || (period + "-01");
   const defaultMemo = description || ("Division allocation - " + formatPeriod(period));
 
+  // Each allocation line produces 3 JE lines:
+  //   1. Debit  → Division A (their share of untagged)
+  //   2. Debit  → Division B (their share of untagged)
+  //   3. Credit → No location (washes out the full untagged amount)
+  //
+  // This correctly moves the untagged expense off the "unassigned" balance
+  // and onto the two divisions without touching already-tagged transactions.
+
   const lines = (draft.lines as EditableLine[]).flatMap((line, i) => {
-    const divADesc = line.division_a_description || defaultMemo;
-    const divBDesc = line.division_b_description || defaultMemo;
+    const memo = line.division_a_description || defaultMemo;
     const divAAmount = line.division_a_amount_edited ?? line.division_a_amount;
     const divBAmount = line.division_b_amount_edited ?? line.division_b_amount;
+    const untaggedTotal = round2(divAAmount + divBAmount);
+
+    // Skip accounts where the full amount is already tagged — nothing to do
+    if (untaggedTotal === 0) return [];
 
     return [
+      // Debit Division A
       {
-        Id: String(i * 2 + 1),
-        Description: divADesc,
+        Id: String(i * 3 + 1),
+        Description: memo,
         Amount: divAAmount,
         DetailType: "JournalEntryLineDetail",
         JournalEntryLineDetail: {
-          PostingType: "Credit",
+          PostingType: "Debit",
           AccountRef: { value: line.account_id },
           DepartmentRef: { value: divisionALocationId },
         },
       },
+      // Debit Division B
       {
-        Id: String(i * 2 + 2),
-        Description: divBDesc,
+        Id: String(i * 3 + 2),
+        Description: memo,
         Amount: divBAmount,
         DetailType: "JournalEntryLineDetail",
         JournalEntryLineDetail: {
           PostingType: "Debit",
           AccountRef: { value: line.account_id },
           DepartmentRef: { value: divisionBLocationId },
+        },
+      },
+      // Credit untagged total (no department — washes out the unassigned amount)
+      {
+        Id: String(i * 3 + 3),
+        Description: memo,
+        Amount: untaggedTotal,
+        DetailType: "JournalEntryLineDetail",
+        JournalEntryLineDetail: {
+          PostingType: "Credit",
+          AccountRef: { value: line.account_id },
+          // No DepartmentRef — intentionally untagged to offset the source
         },
       },
     ];
@@ -103,4 +134,4 @@ export function buildJournalEntryPayload(
 
   return payload;
 }
-// updated
+
