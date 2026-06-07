@@ -80,7 +80,7 @@ export default function DashboardPage() {
       router.push("/new-allocation");
     } else {
       // Go to setup wizard pre-filled from template
-      router.push(`/new-allocation?templateId=${selectedTemplateId}`);
+      router.push(`/new-allocation?templateId=${selectedTemplateId}&step=dates`);
     }
   };
 
@@ -293,4 +293,5 @@ export default function DashboardPage() {
     </div>
   );
 }
-// v5
+// v6
+
