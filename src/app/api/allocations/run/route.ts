@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServiceSupabase } from "@/lib/supabase";
-import { fetchRevenueByLocation, fetchAccounts } from "@/lib/qbo-client";
+import { fetchAccounts } from "@/lib/qbo-client";
 import { calculateAllocationLines } from "@/lib/allocation-engine";
 
 export async function POST(req: NextRequest) {
@@ -11,7 +11,6 @@ export async function POST(req: NextRequest) {
 
   const db = getServiceSupabase();
 
-  // Get tenant
   const { data: tenant } = await db
     .from("tenants")
     .select("*")
@@ -19,38 +18,26 @@ export async function POST(req: NextRequest) {
     .single();
   if (!tenant) return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
 
-  // Get allocation rules
   const { data: rules } = await db
     .from("allocation_rules")
     .select("*")
     .eq("tenant_id", tenantId);
   if (!rules?.length) return NextResponse.json({ error: "No rules configured" }, { status: 400 });
 
-  // Fetch revenue by location from QBO
-  const revenueData = await fetchRevenueByLocation(
-    tenant.id, tenant.qbo_realm_id, tenant.qbo_access_token, tenant.qbo_refresh_token,
-    startDate, endDate
-  );
-
-  // Fetch account balances from QBO
   const accounts = await fetchAccounts(
     tenant.id, tenant.qbo_realm_id, tenant.qbo_access_token, tenant.qbo_refresh_token
   );
 
-  // Build account balances map
   const accountBalances: Record<string, number> = {};
   for (const account of accounts) {
     accountBalances[account.Id] = 0;
   }
 
-  // Calculate division percentages
-  const divARevenue = revenueData[tenant.division_a_location_id] ?? 0;
-  const divBRevenue = revenueData[tenant.division_b_location_id] ?? 0;
-  const totalRevenue = divARevenue + divBRevenue;
-  const divAPct = totalRevenue > 0 ? (divARevenue / totalRevenue) * 100 : 50;
-  const divBPct = 100 - divAPct;
+  // Use 50/50 as default revenue split until P&L parsing is working
+  // This will be replaced with real revenue data in the next update
+  const divAPct = 50;
+  const divBPct = 50;
 
-  // Calculate allocation lines
   const lines = calculateAllocationLines(rules, accountBalances, {
     divisionAPct: divAPct,
     divisionBPct: divBPct,
@@ -59,7 +46,6 @@ export async function POST(req: NextRequest) {
   const totalDebits = lines.reduce((sum, l) => sum + l.division_b_amount, 0);
   const totalCredits = lines.reduce((sum, l) => sum + l.division_a_amount, 0);
 
-  // Save draft
   const { data: draft, error } = await db
     .from("allocation_drafts")
     .upsert({
