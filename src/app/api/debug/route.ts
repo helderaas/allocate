@@ -7,29 +7,28 @@ export async function GET(req: NextRequest) {
 
   const db = getServiceSupabase();
 
-  // Get the most recent draft and show its full lines
-  const { data: drafts } = await db
+  // Show ALL drafts for this tenant, all periods, with full lines
+  const { data: allDrafts, error } = await db
     .from("allocation_drafts")
-    .select("id, period, status, created_at, lines, tenant_id")
+    .select("id, period, status, created_at, tenant_id, lines")
     .eq("tenant_id", tenantId)
-    .order("created_at", { ascending: false })
-    .limit(3);
-
-  // Also check: are there ANY drafts in the table for period 2026-05 regardless of tenant?
-  const { data: allDraftsForPeriod } = await db
-    .from("allocation_drafts")
-    .select("id, tenant_id, period, status, created_at")
-    .eq("period", "2026-05")
     .order("created_at", { ascending: false });
 
   return NextResponse.json({
     tenantId,
-    myRecentDrafts: drafts?.map(d => ({
-      ...d,
-      lines: typeof d.lines === "string" ? JSON.parse(d.lines) : d.lines,
+    totalDrafts: allDrafts?.length ?? 0,
+    allDrafts: allDrafts?.map(d => ({
+      id: d.id,
+      period: d.period,
+      status: d.status,
+      created_at: d.created_at,
+      firstAccountName: (() => {
+        try {
+          const lines = typeof d.lines === "string" ? JSON.parse(d.lines) : d.lines;
+          return lines?.[0]?.account_name ?? "none";
+        } catch { return "parse error"; }
+      })(),
     })),
-    allDraftsForPeriod,
-  }, {
-    headers: { "Cache-Control": "no-store" },
-  });
+    deleteError: error?.message,
+  }, { headers: { "Cache-Control": "no-store" } });
 }
