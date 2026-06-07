@@ -15,6 +15,7 @@ function ReviewContent() {
   const params = useSearchParams();
   const router = useRouter();
   const period = params.get("period");
+  const t = params.get("t"); // cache-bust token from dashboard
 
   const [draft, setDraft] = useState<AllocationDraft | null>(null);
   const [lines, setLines] = useState<EditableLine[]>([]);
@@ -30,6 +31,9 @@ function ReviewContent() {
   useEffect(() => {
     async function load() {
       if (!period) return;
+      setLoading(true);
+      setDraft(null);
+      setLines([]);
       const res = await fetch("/api/allocations/draft?period=" + period, { cache: "no-store" });
       const data = await res.json();
       if (data.draft) {
@@ -51,7 +55,7 @@ function ReviewContent() {
       setLoading(false);
     }
     load();
-  }, [period]);
+  }, [period, t]); // t forces re-fetch every time Run Allocation is clicked
 
   const updateLine = (index: number, field: keyof EditableLine, value: string | number) => {
     setLines(prev => prev.map((l, i) => i === index ? { ...l, [field]: value } : l));
@@ -74,7 +78,6 @@ function ReviewContent() {
   const isBalanced = Math.abs(totalDebits - totalCredits) < 0.01;
 
   const handleReject = () => {
-    // Go back to onboarding account picker with returnTo=dashboard
     router.push("/onboarding?returnTo=dashboard");
   };
 
@@ -301,5 +304,4 @@ export default function ReviewPage() {
     </Suspense>
   );
 }
-// v4
-
+// v5
