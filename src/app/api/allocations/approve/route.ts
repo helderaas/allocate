@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
   const tenantId = req.cookies.get("tenant_id")?.value;
   if (!tenantId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { draftId, jeDate, description, journalNumber, lines: editedLines } = await req.json();
+  const { draftId, jeDate, description, journalNumber, lines: editedLines, note } = await req.json();
   const db = getServiceSupabase();
 
   const { data: draft, error: draftError } = await db
@@ -22,16 +22,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Draft not found" }, { status: 404 });
   }
 
-  const { data: tenant } = await db
-    .from("tenants")
-    .select("*")
-    .eq("id", tenantId)
-    .single();
+  // Block edits on locked entries
+  if (draft.locked_at) {
+    return NextResponse.json({ error: "This allocation is locked and cannot be amended. Unlock it first or void it." }, { status: 403 });
+  }
 
+  const { data: tenant } = await db
+    .from("tenants").select("*").eq("id", tenantId).single();
   if (!tenant) return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
 
-  // If already posted, void the existing JE in QBO first
-  if (draft.status === "posted" && draft.qbo_journal_entry_id) {
+  const isAmend = draft.status === "posted" && !!draft.qbo_journal_entry_id;
+  const previousJeId = draft.qbo_journal_entry_id ?? null;
+  const previousLines = draft.lines;
+
+  // If already posted, void the existing JE in QBO first — hard fail if void fails
+  if (isAmend) {
     try {
       await voidJournalEntry(
         tenant.id,
@@ -41,11 +46,14 @@ export async function POST(req: NextRequest) {
         draft.qbo_journal_entry_id
       );
     } catch (err) {
-      console.error("Failed to void existing JE:", err);
+      const msg = err instanceof Error ? err.message : String(err);
+      return NextResponse.json(
+        { error: `Failed to void existing journal entry in QBO before amending: ${msg}` },
+        { status: 500 }
+      );
     }
   }
 
-  // Use edited lines if provided, otherwise use draft lines
   const lines = editedLines || (typeof draft.lines === "string" ? JSON.parse(draft.lines) : draft.lines);
   const draftWithLines: AllocationDraft = { ...draft, lines };
 
@@ -59,15 +67,21 @@ export async function POST(req: NextRequest) {
     journalNumber || draft.journal_number
   );
 
-  const je = await postJournalEntry(
-    tenant.id,
-    tenant.qbo_realm_id,
-    tenant.qbo_access_token,
-    tenant.qbo_refresh_token,
-    payload
-  );
+  let je: { Id: string };
+  try {
+    je = await postJournalEntry(
+      tenant.id,
+      tenant.qbo_realm_id,
+      tenant.qbo_access_token,
+      tenant.qbo_refresh_token,
+      payload
+    );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: `Failed to post journal entry to QBO: ${msg}` }, { status: 500 });
+  }
 
-  // Save edited lines and metadata back to draft
+  // Update draft record
   await db
     .from("allocation_drafts")
     .update({
@@ -81,6 +95,18 @@ export async function POST(req: NextRequest) {
     })
     .eq("id", draftId);
 
-  return NextResponse.json({ ok: true, journalEntryId: je.Id });
+  // Write audit log entry
+  await db.from("allocation_audit_log").insert({
+    draft_id: draftId,
+    tenant_id: tenantId,
+    action: isAmend ? "amended" : "posted",
+    je_id_before: previousJeId,
+    je_id_after: je.Id,
+    previous_lines: isAmend ? previousLines : null,
+    new_lines: JSON.stringify(lines),
+    note: note || null,
+  });
+
+  return NextResponse.json({ ok: true, journalEntryId: je.Id, action: isAmend ? "amended" : "posted" });
 }
-// updated
+// v2
