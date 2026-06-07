@@ -162,7 +162,7 @@ export default function HistoryPage() {
 
                       <div
                         className="flex-1 min-w-0 cursor-pointer"
-                        onClick={() => a.status === "posted" && router.push("/review?period=" + a.period + "&t=" + Date.now())}
+                        onClick={() => a.status === "posted" && window.open("/review?period=" + a.period + "&t=" + Date.now(), "_blank")}
                       >
                         <p className={`text-sm font-medium ${a.status === "voided" ? "text-gray-400 line-through" : "text-gray-900"}`}>
                           {periodLabel(a.period)}
@@ -223,7 +223,7 @@ export default function HistoryPage() {
                         <ChevronRight
                           size={14}
                           className="text-gray-300 shrink-0 cursor-pointer"
-                          onClick={() => router.push("/review?period=" + a.period + "&t=" + Date.now())}
+                          onClick={() => window.open("/review?period=" + a.period + "&t=" + Date.now(), "_blank")}
                         />
                       )}
                     </div>
@@ -237,4 +237,5 @@ export default function HistoryPage() {
     </div>
   );
 }
-// v1
+// v2
+
