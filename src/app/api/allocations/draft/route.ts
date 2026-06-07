@@ -10,16 +10,21 @@ export async function GET(req: NextRequest) {
   if (!period) return NextResponse.json({ error: "Period required" }, { status: 400 });
 
   const db = getServiceSupabase();
-  const { data: draft, error } = await db
+
+  // Use limit(1) + order instead of .single() so multiple rows never cause an error
+  const { data: rows, error } = await db
     .from("allocation_drafts")
     .select("*")
     .eq("tenant_id", tenantId)
     .eq("period", period)
-    .single();
+    .order("created_at", { ascending: false })
+    .limit(1);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 404 });
+  if (error || !rows?.length) {
+    return NextResponse.json({ error: error?.message ?? "Not found" }, { status: 404 });
+  }
 
-  return NextResponse.json({ draft }, {
+  return NextResponse.json({ draft: rows[0] }, {
     headers: {
       "Cache-Control": "no-store, no-cache, must-revalidate",
       "Pragma": "no-cache",
