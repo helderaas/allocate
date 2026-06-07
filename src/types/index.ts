@@ -71,7 +71,7 @@ export interface AllocationDraft {
   id: string;
   tenant_id: string;
   period: string;
-  status: "draft" | "approved" | "posted" | "rejected";
+  status: "draft" | "approved" | "posted" | "rejected" | "voided";
   lines: AllocationLine[];
   total_debits: number;
   total_credits: number;
@@ -79,4 +79,7 @@ export interface AllocationDraft {
   created_at: string;
   approved_at?: string;
   posted_at?: string;
+  voided_at?: string;
+  locked_at?: string;
 }
+
