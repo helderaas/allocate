@@ -1,17 +1,11 @@
 "use client";
 import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
+import { useSearchParams } from "next/navigation";
+import { createBrowserClient } from "@supabase/ssr";
 import { Loader2, Mail, Lock, ArrowRight } from "lucide-react";
 import { Suspense } from "react";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
 function LoginContent() {
-  const router = useRouter();
   const params = useSearchParams();
   const returnTo = params.get("returnTo") || "/dashboard";
 
@@ -24,6 +18,12 @@ function LoginContent() {
     e.preventDefault();
     setLoading(true);
     setError("");
+
+    // Use createBrowserClient from @supabase/ssr so session is stored in cookies
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
 
     const { error } = await supabase.auth.signInWithPassword({ email, password });
 
@@ -40,7 +40,6 @@ function LoginContent() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-sm">
-        {/* Logo */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-semibold text-gray-900">Allocate</h1>
           <p className="text-gray-500 text-sm mt-1">Sign in to your account</p>
@@ -113,9 +112,12 @@ function LoginContent() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin" size={20} /></div>}>
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="animate-spin" size={20} />
+      </div>
+    }>
       <LoginContent />
     </Suspense>
   );
 }
-
