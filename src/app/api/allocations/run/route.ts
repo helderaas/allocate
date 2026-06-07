@@ -44,10 +44,11 @@ export async function POST(req: NextRequest) {
   const totalDebits = lines.reduce((sum, l) => sum + l.division_b_amount, 0);
   const totalCredits = lines.reduce((sum, l) => sum + l.division_a_amount, 0);
 
-  // Delete ALL existing drafts for this tenant before creating fresh one
+  // Delete ALL existing drafts for this tenant+period regardless of status
+  // so we never accumulate stale rows that confuse .single() on the GET
   await db.from("allocation_drafts").delete()
     .eq("tenant_id", tenantId)
-    .eq("status", "draft");
+    .eq("period", period);
 
   const { data: draft, error } = await db
     .from("allocation_drafts")
