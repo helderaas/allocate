@@ -34,7 +34,11 @@ function ReviewContent() {
       setLoading(true);
       setDraft(null);
       setLines([]);
-      const res = await fetch("/api/allocations/draft?period=" + period, { cache: "no-store" });
+      const res = await fetch("/api/allocations/draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ period }),
+      });
       const data = await res.json();
       if (data.draft) {
         setDraft(data.draft);
@@ -312,5 +316,6 @@ export default function ReviewPage() {
     </Suspense>
   );
 }
-// v6
+// v7
+
 
