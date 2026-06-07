@@ -33,8 +33,8 @@ function LoginContent() {
       return;
     }
 
-    router.push(returnTo);
-    router.refresh();
+    // Hard redirect so middleware picks up the new session cookie
+    window.location.href = returnTo;
   };
 
   return (
@@ -118,3 +118,4 @@ export default function LoginPage() {
     </Suspense>
   );
 }
+
