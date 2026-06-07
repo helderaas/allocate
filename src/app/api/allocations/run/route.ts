@@ -69,4 +69,3 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ draft });
 }
-// v2c
