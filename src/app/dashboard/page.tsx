@@ -14,7 +14,6 @@ export default function DashboardPage() {
   const [running, setRunning] = useState(false);
   const [error, setError] = useState("");
 
-  // Date range — default to last month
   const today = new Date();
   const firstOfLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
   const lastOfLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
@@ -24,7 +23,7 @@ export default function DashboardPage() {
   const [startDate, setStartDate] = useState(fmt(firstOfLastMonth));
   const [endDate, setEndDate] = useState(fmt(lastOfLastMonth));
 
-  const period = startDate.slice(0, 7); // "2025-05"
+  const period = startDate.slice(0, 7);
   const periodLabel = new Date(startDate + "T12:00:00")
     .toLocaleString("default", { month: "long", year: "numeric" });
 
@@ -78,8 +77,8 @@ export default function DashboardPage() {
               className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-xl font-medium text-sm"
             >
               {running
-                ? <><Loader2 size={16} className="animate-spin" /> Calculating…</>
-                : <>Run {periodLabel} <ArrowRight size={16} /></>
+                ? <><Loader2 size={16} className="animate-spin" /> Calculating...</>
+                : <>{`Run ${periodLabel}`} <ArrowRight size={16} /></>
               }
             </button>
           </div>
@@ -112,14 +111,4 @@ export default function DashboardPage() {
               className="flex items-center gap-4 p-4 border-b border-gray-100 last:border-0 hover:bg-gray-50 cursor-pointer"
             >
               <div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center">
-                <Calendar size={16} className="text-indigo-500" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-900">{a.label}</p>
-                <p className="text-xs text-gray-400">Created {a.createdAt}</p>
-              </div>
-              <p className="text-sm font-medium text-gray-900">${a.total.toLocaleString()}</p>
-              <div className="flex items-center gap-1.5 text-xs font-medium text-green-600">
-                {a.status === "posted" ? <CheckCircle size={14} /> : <Clock size={14} />}
-                {a.status.charAt(0).toUpperCase() + a.status.slice(1)}
-              </
+                <Calendar size={16} className="text-indigo-500" /
