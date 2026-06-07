@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { QBOAccount, QBOLocation } from "@/types";
 import { CheckSquare, Square, ChevronRight, Loader2 } from "lucide-react";
 
@@ -13,7 +14,9 @@ interface SelectedAccount {
 
 function OnboardingContent() {
   const params = useSearchParams();
+  const router = useRouter();
   const tenantId = params.get("tenantId");
+  const returnTo = params.get("returnTo");
   const error = params.get("error");
 
   const [step, setStep] = useState<Step>("locations");
@@ -49,7 +52,7 @@ function OnboardingContent() {
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center gap-3 text-gray-500">
-      <Loader2 className="animate-spin" size={20} /> Loading your QBO data…
+      <Loader2 className="animate-spin" size={20} /> Loading your QBO data...
     </div>
   );
 
@@ -82,13 +85,20 @@ function OnboardingContent() {
         })),
       }),
     });
-    setStep("done");
+    // If coming from reject, go back to dashboard. Otherwise show done screen.
+    if (returnTo === "dashboard") {
+      router.push("/dashboard");
+    } else {
+      setStep("done");
+    }
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-3xl mx-auto py-10 px-4">
-        <h1 className="text-2xl font-semibold text-gray-900 mb-1">Set up Allocate</h1>
+        <h1 className="text-2xl font-semibold text-gray-900 mb-1">
+          {returnTo === "dashboard" ? "Edit allocation rules" : "Set up Allocate"}
+        </h1>
         <p className="text-gray-500 mb-8 text-sm">Configure your divisions and allocation rules.</p>
 
         {step === "locations" && (
@@ -100,10 +110,10 @@ function OnboardingContent() {
                 <div key={loc.Id} className="flex items-center gap-3 p-3 rounded-xl border border-gray-100">
                   <p className="flex-1 font-medium text-sm">{loc.Name}</p>
                   <button onClick={() => setDivisionA(loc)}
-                    className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${divisionA?.Id === loc.Id ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}
+                    className={"text-xs px-3 py-1.5 rounded-lg font-medium transition-colors " + (divisionA?.Id === loc.Id ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-500 hover:bg-gray-200")}
                   >Division A</button>
                   <button onClick={() => setDivisionB(loc)}
-                    className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${divisionB?.Id === loc.Id ? "bg-teal-100 text-teal-700" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}
+                    className={"text-xs px-3 py-1.5 rounded-lg font-medium transition-colors " + (divisionB?.Id === loc.Id ? "bg-teal-100 text-teal-700" : "bg-gray-100 text-gray-500 hover:bg-gray-200")}
                   >Division B</button>
                 </div>
               ))}
@@ -118,7 +128,7 @@ function OnboardingContent() {
           <div className="bg-white rounded-2xl border border-gray-200 p-6">
             <h2 className="font-medium text-gray-900 mb-1">Step 2 — Select shared expense accounts</h2>
             <p className="text-sm text-gray-500 mb-4">Choose accounts whose expenses are split between divisions.</p>
-            <input type="text" placeholder="Search accounts…" value={search}
+            <input type="text" placeholder="Search accounts..." value={search}
               onChange={e => setSearch(e.target.value)}
               className="w-full mb-4 px-3 py-2 text-sm border border-gray-200 rounded-xl"
             />
@@ -131,7 +141,7 @@ function OnboardingContent() {
                   >
                     {selected ? <CheckSquare size={18} className="text-indigo-600 shrink-0" /> : <Square size={18} className="text-gray-300 shrink-0" />}
                     <div>
-                      <p className={`text-sm font-medium ${acct.SubAccount ? "pl-3 text-gray-600" : "text-gray-900"}`}>
+                      <p className={"text-sm font-medium " + (acct.SubAccount ? "pl-3 text-gray-600" : "text-gray-900")}>
                         {acct.SubAccount ? "↳ " : ""}{acct.FullyQualifiedName}
                       </p>
                       <p className="text-xs text-gray-400">{acct.AccountType} · {acct.Id}</p>
@@ -190,8 +200,8 @@ function OnboardingContent() {
             <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <CheckSquare size={24} className="text-green-600" />
             </div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">You&apos;re all set</h2>
-            <p className="text-sm text-gray-500 mb-6">Configuration saved. Head to the dashboard to run your first allocation.</p>
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">Configuration saved!</h2>
+            <p className="text-sm text-gray-500 mb-6">Your allocation rules have been updated.</p>
             <a href="/dashboard" className="inline-flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-medium text-sm hover:bg-indigo-700">
               Go to dashboard <ChevronRight size={16} />
             </a>
@@ -203,5 +213,10 @@ function OnboardingContent() {
 }
 
 export default function OnboardingPage() {
-  return <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin" size={20} /></div>}><OnboardingContent /></Suspense>;
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin" size={20} /></div>}>
+      <OnboardingContent />
+    </Suspense>
+  );
 }
+// v2

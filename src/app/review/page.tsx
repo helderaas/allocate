@@ -73,6 +73,11 @@ function ReviewContent() {
   const totalCredits = lines.reduce((sum, l) => sum + (l.division_a_amount_edited || 0), 0);
   const isBalanced = Math.abs(totalDebits - totalCredits) < 0.01;
 
+  const handleReject = () => {
+    // Go back to onboarding account picker with returnTo=dashboard
+    router.push("/onboarding?tenantId=current&returnTo=dashboard");
+  };
+
   const approve = async () => {
     if (!draft) return;
     if (!isBalanced) {
@@ -149,9 +154,9 @@ function ReviewContent() {
             <p className="text-gray-500 text-sm mt-0.5">Period: {period}</p>
           </div>
           <div className="flex gap-3">
-            <button onClick={() => router.push("/dashboard")}
+            <button onClick={handleReject}
               className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50">
-              <XCircle size={16} /> Reject
+              <XCircle size={16} /> Edit accounts
             </button>
             <button onClick={approve} disabled={posting || !isBalanced}
               className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-xl font-medium text-sm">
@@ -165,7 +170,6 @@ function ReviewContent() {
           <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 text-red-700 text-sm">{error}</div>
         )}
 
-        {/* JE Header fields */}
         <div className="bg-white rounded-2xl border border-gray-200 p-5 mb-6">
           <h2 className="text-sm font-medium text-gray-700 mb-4">Journal entry details</h2>
           <div className="grid grid-cols-2 gap-4 mb-4">
@@ -195,7 +199,6 @@ function ReviewContent() {
           </div>
         </div>
 
-        {/* Summary metrics */}
         <div className="grid grid-cols-3 gap-4 mb-6">
           <div className="bg-white rounded-xl border border-gray-200 p-4">
             <p className="text-xs text-gray-500 mb-1">Total lines</p>
@@ -221,7 +224,6 @@ function ReviewContent() {
           </div>
         )}
 
-        {/* Journal entry lines */}
         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
           <div className="grid grid-cols-12 gap-2 px-4 py-3 border-b border-gray-100 text-xs font-medium text-gray-400 uppercase tracking-wide">
             <span className="col-span-3">Account</span>
@@ -234,7 +236,6 @@ function ReviewContent() {
 
           {lines.map((line, i) => (
             <div key={i} className="border-b border-gray-100 last:border-0">
-              {/* Division A line - Credit */}
               <div className="grid grid-cols-12 gap-2 px-4 py-2.5 items-center hover:bg-gray-50">
                 <span className="col-span-3 text-sm font-medium text-gray-900 truncate">{line.account_name}</span>
                 <span className="col-span-2 text-sm text-blue-600">Division A</span>
@@ -258,7 +259,6 @@ function ReviewContent() {
                 </button>
               </div>
 
-              {/* Division B line - Debit */}
               <div className="grid grid-cols-12 gap-2 px-4 py-2.5 items-center hover:bg-gray-50 bg-gray-50/50">
                 <span className="col-span-3 text-sm font-medium text-gray-900 truncate">{line.account_name}</span>
                 <span className="col-span-2 text-sm text-teal-600">Division B</span>
@@ -279,7 +279,6 @@ function ReviewContent() {
                 <span className="col-span-1"></span>
               </div>
 
-              {/* Expanded rule info */}
               {expandedLines[i] && (
                 <div className="px-4 py-2 bg-indigo-50 text-xs text-indigo-700 border-t border-indigo-100">
                   Rule: {line.rule_type === "revenue_pct" ? "Revenue %" : "Fixed split"} —
@@ -302,4 +301,4 @@ export default function ReviewPage() {
     </Suspense>
   );
 }
-// updated
+// v3

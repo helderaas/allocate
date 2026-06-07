@@ -16,6 +16,9 @@ export async function POST(req: NextRequest) {
   }).eq("id", tenantId);
 
   if (rules?.length) {
+    // Delete ALL existing rules for this tenant first, then insert fresh
+    await db.from("allocation_rules").delete().eq("tenant_id", tenantId);
+
     const rows = rules.map((r: { qbo_account_id: string; qbo_account_name: string; rule_type: string; fixed_pct_division_a: number }) => ({
       tenant_id: tenantId,
       qbo_account_id: r.qbo_account_id,
@@ -23,8 +26,9 @@ export async function POST(req: NextRequest) {
       rule_type: r.rule_type,
       fixed_pct_division_a: r.rule_type === "fixed_split" ? r.fixed_pct_division_a : null,
     }));
-    await db.from("allocation_rules").upsert(rows, { onConflict: "tenant_id,qbo_account_id" });
+    await db.from("allocation_rules").insert(rows);
   }
 
   return NextResponse.json({ ok: true });
 }
+// v2
