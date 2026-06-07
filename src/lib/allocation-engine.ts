@@ -5,6 +5,13 @@ interface RevenueData {
   divisionBPct: number;
 }
 
+interface EditableLine extends AllocationLine {
+  division_a_description?: string;
+  division_b_description?: string;
+  division_a_amount_edited?: number;
+  division_b_amount_edited?: number;
+}
+
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
@@ -50,36 +57,43 @@ export function buildJournalEntryPayload(
   journalNumber?: string
 ) {
   const txnDate = jeDate || (period + "-01");
-  const memo = description || ("Division allocation - " + formatPeriod(period));
+  const defaultMemo = description || ("Division allocation - " + formatPeriod(period));
 
-  const lines = draft.lines.flatMap((line, i) => [
-    {
-      Id: String(i * 2 + 1),
-      Description: line.account_name + " - remove Div A over-allocation",
-      Amount: line.division_a_amount,
-      DetailType: "JournalEntryLineDetail",
-      JournalEntryLineDetail: {
-        PostingType: "Credit",
-        AccountRef: { value: line.account_id },
-        DepartmentRef: { value: divisionALocationId },
+  const lines = (draft.lines as EditableLine[]).flatMap((line, i) => {
+    const divADesc = line.division_a_description || defaultMemo;
+    const divBDesc = line.division_b_description || defaultMemo;
+    const divAAmount = line.division_a_amount_edited ?? line.division_a_amount;
+    const divBAmount = line.division_b_amount_edited ?? line.division_b_amount;
+
+    return [
+      {
+        Id: String(i * 2 + 1),
+        Description: divADesc,
+        Amount: divAAmount,
+        DetailType: "JournalEntryLineDetail",
+        JournalEntryLineDetail: {
+          PostingType: "Credit",
+          AccountRef: { value: line.account_id },
+          DepartmentRef: { value: divisionALocationId },
+        },
       },
-    },
-    {
-      Id: String(i * 2 + 2),
-      Description: line.account_name + " - add Div B share",
-      Amount: line.division_b_amount,
-      DetailType: "JournalEntryLineDetail",
-      JournalEntryLineDetail: {
-        PostingType: "Debit",
-        AccountRef: { value: line.account_id },
-        DepartmentRef: { value: divisionBLocationId },
+      {
+        Id: String(i * 2 + 2),
+        Description: divBDesc,
+        Amount: divBAmount,
+        DetailType: "JournalEntryLineDetail",
+        JournalEntryLineDetail: {
+          PostingType: "Debit",
+          AccountRef: { value: line.account_id },
+          DepartmentRef: { value: divisionBLocationId },
+        },
       },
-    },
-  ]);
+    ];
+  });
 
   const payload: Record<string, unknown> = {
     TxnDate: txnDate,
-    PrivateNote: memo,
+    PrivateNote: defaultMemo,
     Line: lines,
   };
 

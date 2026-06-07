@@ -2,37 +2,104 @@
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { AllocationDraft, AllocationLine } from "@/types";
-import { CheckCircle, XCircle, Loader2, ArrowLeft } from "lucide-react";
+import { CheckCircle, XCircle, Loader2, ArrowLeft, ChevronDown, ChevronUp } from "lucide-react";
+
+interface EditableLine extends AllocationLine {
+  division_a_description: string;
+  division_b_description: string;
+  division_a_amount_edited: number;
+  division_b_amount_edited: number;
+}
 
 function ReviewContent() {
   const params = useSearchParams();
   const router = useRouter();
   const period = params.get("period");
+
   const [draft, setDraft] = useState<AllocationDraft | null>(null);
+  const [lines, setLines] = useState<EditableLine[]>([]);
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
   const [posted, setPosted] = useState(false);
   const [error, setError] = useState("");
+  const [jeDate, setJeDate] = useState("");
+  const [defaultDescription, setDefaultDescription] = useState("");
+  const [journalNumber, setJournalNumber] = useState("");
+  const [expandedLines, setExpandedLines] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
     async function load() {
       if (!period) return;
-      const res = await fetch(`/api/allocations/draft?period=${period}`);
+      const res = await fetch("/api/allocations/draft?period=" + period);
       const data = await res.json();
-      setDraft(data.draft);
+      if (data.draft) {
+        setDraft(data.draft);
+        setJeDate(data.draft.je_date || "");
+        setDefaultDescription(data.draft.description || "");
+        setJournalNumber(data.draft.journal_number || "");
+        const rawLines: AllocationLine[] = typeof data.draft.lines === "string"
+          ? JSON.parse(data.draft.lines)
+          : data.draft.lines;
+        setLines(rawLines.map(l => ({
+          ...l,
+          division_a_description: data.draft.description || "",
+          division_b_description: data.draft.description || "",
+          division_a_amount_edited: l.division_a_amount,
+          division_b_amount_edited: l.division_b_amount,
+        })));
+      }
       setLoading(false);
     }
     load();
   }, [period]);
 
+  const updateLine = (index: number, field: keyof EditableLine, value: string | number) => {
+    setLines(prev => prev.map((l, i) => i === index ? { ...l, [field]: value } : l));
+  };
+
+  const applyDescriptionToAll = () => {
+    setLines(prev => prev.map(l => ({
+      ...l,
+      division_a_description: defaultDescription,
+      division_b_description: defaultDescription,
+    })));
+  };
+
+  const toggleLine = (index: number) => {
+    setExpandedLines(prev => ({ ...prev, [index]: !prev[index] }));
+  };
+
+  const totalDebits = lines.reduce((sum, l) => sum + (l.division_b_amount_edited || 0), 0);
+  const totalCredits = lines.reduce((sum, l) => sum + (l.division_a_amount_edited || 0), 0);
+  const isBalanced = Math.abs(totalDebits - totalCredits) < 0.01;
+
   const approve = async () => {
     if (!draft) return;
+    if (!isBalanced) {
+      setError("Journal entry is not balanced. Total debits must equal total credits.");
+      return;
+    }
     setPosting(true);
+    setError("");
+
+    const updatedLines = lines.map(l => ({
+      ...l,
+      division_a_amount: l.division_a_amount_edited,
+      division_b_amount: l.division_b_amount_edited,
+    }));
+
     const res = await fetch("/api/allocations/approve", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ draftId: draft.id }),
+      body: JSON.stringify({
+        draftId: draft.id,
+        jeDate,
+        description: defaultDescription,
+        journalNumber,
+        lines: updatedLines,
+      }),
     });
+
     if (res.ok) {
       setPosted(true);
     } else {
@@ -44,7 +111,7 @@ function ReviewContent() {
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center gap-3 text-gray-500">
-      <Loader2 className="animate-spin" size={20} /> Loading draft…
+      <Loader2 className="animate-spin" size={20} /> Loading draft...
     </div>
   );
 
@@ -65,14 +132,8 @@ function ReviewContent() {
   );
 
   if (!draft) return (
-    <div className="min-h-screen flex items-center justify-center text-gray-500">
-      Draft not found.
-    </div>
+    <div className="min-h-screen flex items-center justify-center text-gray-500">Draft not found.</div>
   );
-
-  const lines: AllocationLine[] = typeof draft.lines === "string"
-    ? JSON.parse(draft.lines)
-    : draft.lines;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -92,20 +153,49 @@ function ReviewContent() {
               className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50">
               <XCircle size={16} /> Reject
             </button>
-            <button onClick={approve} disabled={posting}
+            <button onClick={approve} disabled={posting || !isBalanced}
               className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-xl font-medium text-sm">
               {posting ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />}
-              {posting ? "Posting…" : "Approve & post to QBO"}
+              {posting ? "Posting..." : "Approve & post to QBO"}
             </button>
           </div>
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 text-red-700 text-sm">
-            {error}
-          </div>
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 text-red-700 text-sm">{error}</div>
         )}
 
+        {/* JE Header fields */}
+        <div className="bg-white rounded-2xl border border-gray-200 p-5 mb-6">
+          <h2 className="text-sm font-medium text-gray-700 mb-4">Journal entry details</h2>
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Journal entry date</label>
+              <input type="date" value={jeDate} onChange={e => setJeDate(e.target.value)}
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2" />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Journal number (optional)</label>
+              <input type="text" value={journalNumber} onChange={e => setJournalNumber(e.target.value)}
+                placeholder="e.g. JE-2026-05"
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2" />
+            </div>
+          </div>
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs text-gray-500">Default description (applies to all lines)</label>
+              <button onClick={applyDescriptionToAll}
+                className="text-xs text-indigo-600 hover:text-indigo-700 font-medium">
+                Apply to all lines
+              </button>
+            </div>
+            <input type="text" value={defaultDescription} onChange={e => setDefaultDescription(e.target.value)}
+              placeholder="e.g. May 2026 Division Allocation"
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2" />
+          </div>
+        </div>
+
+        {/* Summary metrics */}
         <div className="grid grid-cols-3 gap-4 mb-6">
           <div className="bg-white rounded-xl border border-gray-200 p-4">
             <p className="text-xs text-gray-500 mb-1">Total lines</p>
@@ -113,35 +203,90 @@ function ReviewContent() {
           </div>
           <div className="bg-white rounded-xl border border-gray-200 p-4">
             <p className="text-xs text-gray-500 mb-1">Total debits</p>
-            <p className="text-2xl font-semibold text-green-600">${Number(draft.total_debits).toLocaleString()}</p>
+            <p className={"text-2xl font-semibold " + (isBalanced ? "text-green-600" : "text-red-500")}>
+              {"$" + totalDebits.toLocaleString()}
+            </p>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 p-4">
             <p className="text-xs text-gray-500 mb-1">Total credits</p>
-            <p className="text-2xl font-semibold text-red-500">${Number(draft.total_credits).toLocaleString()}</p>
+            <p className={"text-2xl font-semibold " + (isBalanced ? "text-red-500" : "text-orange-500")}>
+              {"$" + totalCredits.toLocaleString()}
+            </p>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-          <div className="grid grid-cols-4 gap-4 px-4 py-3 border-b border-gray-100 text-xs font-medium text-gray-400 uppercase tracking-wide">
-            <span>Account</span>
-            <span>Location</span>
-            <span className="text-right">Debit</span>
-            <span className="text-right">Credit</span>
+        {!isBalanced && (
+          <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 mb-6 text-orange-700 text-sm">
+            Warning: Journal entry is out of balance by {"$" + Math.abs(totalDebits - totalCredits).toFixed(2)}. Adjust line amounts before posting.
           </div>
+        )}
+
+        {/* Journal entry lines */}
+        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+          <div className="grid grid-cols-12 gap-2 px-4 py-3 border-b border-gray-100 text-xs font-medium text-gray-400 uppercase tracking-wide">
+            <span className="col-span-3">Account</span>
+            <span className="col-span-2">Location</span>
+            <span className="col-span-4">Description</span>
+            <span className="col-span-1 text-right">Debit</span>
+            <span className="col-span-1 text-right">Credit</span>
+            <span className="col-span-1"></span>
+          </div>
+
           {lines.map((line, i) => (
-            <div key={i}>
-              <div className="grid grid-cols-4 gap-4 px-4 py-3 border-b border-gray-50 hover:bg-gray-50">
-                <span className="text-sm font-medium text-gray-900 truncate">{line.account_name}</span>
-                <span className="text-sm text-blue-600">Division A</span>
-                <span className="text-sm text-right"></span>
-                <span className="text-sm text-right text-red-500">${line.division_a_amount.toLocaleString()}</span>
+            <div key={i} className="border-b border-gray-100 last:border-0">
+              {/* Division A line - Credit */}
+              <div className="grid grid-cols-12 gap-2 px-4 py-2.5 items-center hover:bg-gray-50">
+                <span className="col-span-3 text-sm font-medium text-gray-900 truncate">{line.account_name}</span>
+                <span className="col-span-2 text-sm text-blue-600">Division A</span>
+                <div className="col-span-4">
+                  <input type="text"
+                    value={line.division_a_description}
+                    onChange={e => updateLine(i, "division_a_description", e.target.value)}
+                    className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-indigo-400"
+                    placeholder="Line description..." />
+                </div>
+                <span className="col-span-1 text-sm text-right text-gray-400"></span>
+                <div className="col-span-1">
+                  <input type="number"
+                    value={line.division_a_amount_edited}
+                    onChange={e => updateLine(i, "division_a_amount_edited", parseFloat(e.target.value) || 0)}
+                    className="w-full text-xs text-right border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-indigo-400 text-red-500" />
+                </div>
+                <button onClick={() => toggleLine(i)}
+                  className="col-span-1 flex justify-end text-gray-300 hover:text-gray-500">
+                  {expandedLines[i] ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                </button>
               </div>
-              <div className="grid grid-cols-4 gap-4 px-4 py-3 border-b border-gray-100 hover:bg-gray-50">
-                <span className="text-sm font-medium text-gray-900 truncate">{line.account_name}</span>
-                <span className="text-sm text-teal-600">Division B</span>
-                <span className="text-sm text-right text-green-600">${line.division_b_amount.toLocaleString()}</span>
-                <span className="text-sm text-right"></span>
+
+              {/* Division B line - Debit */}
+              <div className="grid grid-cols-12 gap-2 px-4 py-2.5 items-center hover:bg-gray-50 bg-gray-50/50">
+                <span className="col-span-3 text-sm font-medium text-gray-900 truncate">{line.account_name}</span>
+                <span className="col-span-2 text-sm text-teal-600">Division B</span>
+                <div className="col-span-4">
+                  <input type="text"
+                    value={line.division_b_description}
+                    onChange={e => updateLine(i, "division_b_description", e.target.value)}
+                    className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-indigo-400"
+                    placeholder="Line description..." />
+                </div>
+                <div className="col-span-1">
+                  <input type="number"
+                    value={line.division_b_amount_edited}
+                    onChange={e => updateLine(i, "division_b_amount_edited", parseFloat(e.target.value) || 0)}
+                    className="w-full text-xs text-right border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-indigo-400 text-green-600" />
+                </div>
+                <span className="col-span-1 text-sm text-right text-gray-400"></span>
+                <span className="col-span-1"></span>
               </div>
+
+              {/* Expanded rule info */}
+              {expandedLines[i] && (
+                <div className="px-4 py-2 bg-indigo-50 text-xs text-indigo-700 border-t border-indigo-100">
+                  Rule: {line.rule_type === "revenue_pct" ? "Revenue %" : "Fixed split"} —
+                  Division A: {line.division_a_pct.toFixed(1)}% /
+                  Division B: {line.division_b_pct.toFixed(1)}%
+                </div>
+              )}
             </div>
           ))}
         </div>
