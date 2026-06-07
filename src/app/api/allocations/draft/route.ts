@@ -11,7 +11,6 @@ export async function GET(req: NextRequest) {
 
   const db = getServiceSupabase();
 
-  // Use limit(1) + order instead of .single() so multiple rows never cause an error
   const { data: rows, error } = await db
     .from("allocation_drafts")
     .select("*")
@@ -24,7 +23,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error?.message ?? "Not found" }, { status: 404 });
   }
 
-  return NextResponse.json({ draft: rows[0] }, {
+  // _serverTs lets us confirm in the browser that this is a fresh server response
+  return NextResponse.json({ draft: rows[0], _serverTs: new Date().toISOString() }, {
     headers: {
       "Cache-Control": "no-store, no-cache, must-revalidate",
       "Pragma": "no-cache",
