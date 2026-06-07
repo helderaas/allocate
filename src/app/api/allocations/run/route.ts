@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServiceSupabase } from "@/lib/supabase";
-import { fetchAccounts } from "@/lib/qbo-client";
+import { fetchTrialBalance, fetchRevenueSplit } from "@/lib/qbo-client";
 import { calculateAllocationLines } from "@/lib/allocation-engine";
 
 export async function POST(req: NextRequest) {
@@ -24,28 +24,34 @@ export async function POST(req: NextRequest) {
     .eq("tenant_id", tenantId);
   if (!rules?.length) return NextResponse.json({ error: "No rules configured" }, { status: 400 });
 
-  const accounts = await fetchAccounts(
-    tenant.id, tenant.qbo_realm_id, tenant.qbo_access_token, tenant.qbo_refresh_token
-  );
+  // Fetch real account balances and revenue split from QBO in parallel
+  const [accountBalances, revenueSplit] = await Promise.all([
+    fetchTrialBalance(
+      tenant.id,
+      tenant.qbo_realm_id,
+      tenant.qbo_access_token,
+      tenant.qbo_refresh_token,
+      startDate,
+      endDate
+    ),
+    fetchRevenueSplit(
+      tenant.id,
+      tenant.qbo_realm_id,
+      tenant.qbo_access_token,
+      tenant.qbo_refresh_token,
+      startDate,
+      endDate,
+      tenant.division_a_location_id,
+      tenant.division_b_location_id
+    ),
+  ]);
 
-  const accountBalances: Record<string, number> = {};
-  for (const account of accounts) {
-    accountBalances[account.Id] = 0;
-  }
-
-  const divAPct = 50;
-  const divBPct = 50;
-
-  const lines = calculateAllocationLines(rules, accountBalances, {
-    divisionAPct: divAPct,
-    divisionBPct: divBPct,
-  });
+  const lines = calculateAllocationLines(rules, accountBalances, revenueSplit);
 
   const totalDebits = lines.reduce((sum, l) => sum + l.division_b_amount, 0);
   const totalCredits = lines.reduce((sum, l) => sum + l.division_a_amount, 0);
 
-  // Delete ALL existing drafts for this tenant+period regardless of status
-  // so we never accumulate stale rows that confuse .single() on the GET
+  // Delete all existing drafts for this tenant+period before inserting fresh one
   await db.from("allocation_drafts").delete()
     .eq("tenant_id", tenantId)
     .eq("period", period);
