@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
 
   const { data: drafts, error } = await db
     .from("allocation_drafts")
-    .select("id, period, status, created_at, total_debits, total_credits, description")
+    .select("id, period, status, created_at, total_debits, total_credits, description, qbo_journal_entry_id, voided_at")
     .eq("tenant_id", tenantId)
     .order("created_at", { ascending: false })
     .limit(50);
