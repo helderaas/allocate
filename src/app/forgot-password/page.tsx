@@ -20,7 +20,7 @@ export default function ForgotPasswordPage() {
     );
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: `${window.location.origin}/api/auth/callback/email?next=/reset-password`,
     });
 
     if (error) {
@@ -41,7 +41,7 @@ export default function ForgotPasswordPage() {
         </div>
         <h2 className="text-xl font-semibold text-gray-900 mb-2">Check your email</h2>
         <p className="text-gray-500 text-sm mb-6">
-          We sent a password reset link to <strong>{email}</strong>. Check your inbox and follow the link to reset your password.
+          We sent a password reset link to <strong>{email}</strong>. Click it to reset your password.
         </p>
         <a href="/login" className="text-indigo-600 text-sm font-medium hover:text-indigo-700">
           Back to sign in
@@ -67,29 +67,17 @@ export default function ForgotPasswordPage() {
               <label className="block text-xs font-medium text-gray-700 mb-1">Email</label>
               <div className="relative">
                 <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  required
+                <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
                   placeholder="you@example.com"
                   className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-400"
-                  autoFocus
-                />
+                  autoFocus />
               </div>
             </div>
-
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-red-700 text-xs">
-                {error}
-              </div>
+              <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-red-700 text-xs">{error}</div>
             )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-xl font-medium text-sm"
-            >
+            <button type="submit" disabled={loading}
+              className="w-full flex items-center justify-center gap-2 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-xl font-medium text-sm">
               {loading ? <Loader2 size={16} className="animate-spin" /> : <Mail size={16} />}
               {loading ? "Sending..." : "Send reset link"}
             </button>
