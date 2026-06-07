@@ -94,13 +94,19 @@ interface GLRow {
 function sumGLSections(rows: GLRow[]): number {
   let total = 0;
   for (const row of rows) {
-    // Skip the GrandTotal section — we only want per-account section totals
-    if (row.type === "Section" && row.group !== "GrandTotal" && row.Summary?.ColData) {
-      const val = parseFloat(row.Summary.ColData[6]?.value || "0") || 0;
-      total += val;
-    }
-    if (row.Rows?.Row?.length) {
-      total += sumGLSections(row.Rows.Row);
+    if (row.type === "Section" && row.group !== "GrandTotal") {
+      const hasNestedSections = row.Rows?.Row?.some(
+        (r) => (r as GLRow).type === "Section" && (r as GLRow).group !== "GrandTotal"
+      );
+      if (!hasNestedSections && row.Summary?.ColData) {
+        // Leaf section — no child sections inside, so this is the actual account total
+        const val = parseFloat(row.Summary.ColData[6]?.value || "0") || 0;
+        total += val;
+      }
+      // Always recurse to find deeper leaf sections
+      if (row.Rows?.Row?.length) {
+        total += sumGLSections(row.Rows.Row);
+      }
     }
   }
   return total;
@@ -288,3 +294,4 @@ export async function voidJournalEntry(
     throw err;
   }
 }
+
