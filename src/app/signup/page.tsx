@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
-import { createBrowserClient } from "@supabase/ssr";
-import { Loader2, Mail, Lock, ArrowRight, CheckCircle } from "lucide-react";
+import { Loader2, Mail, Lock, ArrowRight } from "lucide-react";
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
@@ -9,52 +8,33 @@ export default function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password !== confirmPassword) { setError("Passwords don't match"); return; }
     if (password.length < 8) { setError("Password must be at least 8 characters"); return; }
+
     setLoading(true);
     setError("");
 
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/api/auth/callback/email`,
-      },
+    const res = await fetch("/api/auth/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+      credentials: "include",
     });
 
-    if (error) { setError(error.message); setLoading(false); return; }
+    const data = await res.json();
 
-    // Auto sign in after signup since email confirm is off
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-    if (!signInError) {
-      window.location.href = "/dashboard";
+    if (!res.ok) {
+      setError(data.error ?? "Failed to create account");
+      setLoading(false);
       return;
     }
 
-    setSuccess(true);
-    setLoading(false);
+    // Redirect to connect QBO — new users always need to connect
+    window.location.href = "/";
   };
-
-  if (success) return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-sm text-center">
-        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <CheckCircle size={32} className="text-green-600" />
-        </div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">Account created!</h2>
-        <p className="text-gray-500 text-sm mb-6">Redirecting you to the app...</p>
-      </div>
-    </div>
-  );
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
