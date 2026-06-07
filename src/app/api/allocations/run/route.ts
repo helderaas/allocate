@@ -47,9 +47,11 @@ export async function POST(req: NextRequest) {
   const totalDebits = lines.reduce((sum, l) => sum + l.division_a_amount + l.division_b_amount, 0);
   const totalCredits = lines.reduce((sum, l) => sum + l.untagged_amount, 0);
 
+  // Only delete existing drafts — never touch posted or voided entries
   await db.from("allocation_drafts").delete()
     .eq("tenant_id", tenantId)
-    .eq("period", period);
+    .eq("period", period)
+    .eq("status", "draft");
 
   const { data: draft, error } = await db
     .from("allocation_drafts")
@@ -71,3 +73,4 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ draft });
 }
+
