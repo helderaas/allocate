@@ -8,11 +8,13 @@ const PUBLIC_ROUTES = ["/", "/login", "/signup", "/api/auth"];
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
+  // Allow public routes
   const isPublic = PUBLIC_ROUTES.some(route =>
     pathname === route || pathname.startsWith(route + "/")
   );
   if (isPublic) return NextResponse.next();
 
+  // Create response that we'll potentially modify
   let response = NextResponse.next({ request: req });
 
   const supabase = createServerClient(
@@ -32,9 +34,10 @@ export async function middleware(req: NextRequest) {
     }
   );
 
-  const { data: { user } } = await supabase.auth.getUser();
+  // Refresh the session — this updates cookies if needed
+  const { data: { session } } = await supabase.auth.getSession();
 
-  if (!user) {
+  if (!session) {
     const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("returnTo", pathname);
     return NextResponse.redirect(loginUrl);
