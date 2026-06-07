@@ -2,7 +2,10 @@
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { AllocationDraft, AllocationLine } from "@/types";
-import { CheckCircle, XCircle, Loader2, ArrowLeft, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  CheckCircle, XCircle, Loader2, ArrowLeft,
+  ChevronDown, ChevronUp, BookmarkPlus, X,
+} from "lucide-react";
 
 interface EditableLine extends AllocationLine {
   division_a_description: string;
@@ -15,7 +18,7 @@ function ReviewContent() {
   const params = useSearchParams();
   const router = useRouter();
   const period = params.get("period");
-  const t = params.get("t"); // cache-bust token from dashboard
+  const t = params.get("t");
 
   const [draft, setDraft] = useState<AllocationDraft | null>(null);
   const [lines, setLines] = useState<EditableLine[]>([]);
@@ -27,6 +30,13 @@ function ReviewContent() {
   const [defaultDescription, setDefaultDescription] = useState("");
   const [journalNumber, setJournalNumber] = useState("");
   const [expandedLines, setExpandedLines] = useState<Record<number, boolean>>({});
+
+  // Save-as-template state
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [templateName, setTemplateName] = useState("");
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [saveTemplateError, setSaveTemplateError] = useState("");
+  const [templateSaved, setTemplateSaved] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -59,7 +69,7 @@ function ReviewContent() {
       setLoading(false);
     }
     load();
-  }, [period, t]); // t forces re-fetch every time Run Allocation is clicked
+  }, [period, t]);
 
   const updateLine = (index: number, field: keyof EditableLine, value: string | number) => {
     setLines(prev => prev.map((l, i) => i === index ? { ...l, [field]: value } : l));
@@ -82,7 +92,7 @@ function ReviewContent() {
   const isBalanced = Math.abs(totalDebits - totalCredits) < 0.01;
 
   const handleReject = () => {
-    router.push("/onboarding?returnTo=dashboard");
+    router.push("/new-allocation");
   };
 
   const approve = async () => {
@@ -121,6 +131,35 @@ function ReviewContent() {
     setPosting(false);
   };
 
+  const saveAsTemplate = async () => {
+    if (!templateName.trim()) { setSaveTemplateError("Please enter a name."); return; }
+    setSavingTemplate(true);
+    setSaveTemplateError("");
+
+    // Pull current active config rules to save
+    const configRes = await fetch("/api/onboarding/config", { cache: "no-store" });
+    const { rules } = await configRes.json();
+
+    const res = await fetch("/api/allocations/templates", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: templateName, rules }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setSaveTemplateError(data.error ?? "Failed to save");
+      setSavingTemplate(false);
+      return;
+    }
+    setSavingTemplate(false);
+    setTemplateSaved(true);
+    setTimeout(() => {
+      setShowSaveModal(false);
+      setTemplateSaved(false);
+      setTemplateName("");
+    }, 1500);
+  };
+
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center gap-3 text-gray-500">
       <Loader2 className="animate-spin" size={20} /> Loading draft...
@@ -135,8 +174,10 @@ function ReviewContent() {
         </div>
         <h2 className="text-xl font-semibold text-gray-900 mb-2">Journal entry posted!</h2>
         <p className="text-gray-500 text-sm mb-6">The allocation has been posted to QuickBooks.</p>
-        <button onClick={() => router.push("/dashboard")}
-          className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-medium text-sm hover:bg-indigo-700">
+        <button
+          onClick={() => router.push("/dashboard")}
+          className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-medium text-sm hover:bg-indigo-700"
+        >
           Back to dashboard
         </button>
       </div>
@@ -150,8 +191,10 @@ function ReviewContent() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-4xl mx-auto py-10 px-4">
-        <button onClick={() => router.push("/dashboard")}
-          className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-6">
+        <button
+          onClick={() => router.push("/dashboard")}
+          className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-6"
+        >
           <ArrowLeft size={16} /> Back to dashboard
         </button>
 
@@ -160,18 +203,77 @@ function ReviewContent() {
             <h1 className="text-2xl font-semibold text-gray-900">Review allocation</h1>
             <p className="text-gray-500 text-sm mt-0.5">Period: {period}</p>
           </div>
-          <div className="flex gap-3">
-            <button onClick={handleReject}
-              className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50">
+          <div className="flex gap-3 flex-wrap justify-end">
+            {/* Save configuration */}
+            <button
+              onClick={() => { setShowSaveModal(true); setSaveTemplateError(""); setTemplateName(""); }}
+              className="flex items-center gap-2 px-4 py-2.5 border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 rounded-xl text-sm font-medium text-indigo-700"
+            >
+              <BookmarkPlus size={16} /> Save configuration
+            </button>
+            <button
+              onClick={handleReject}
+              className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50"
+            >
               <XCircle size={16} /> Edit accounts
             </button>
-            <button onClick={approve} disabled={posting || !isBalanced}
-              className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-xl font-medium text-sm">
+            <button
+              onClick={approve}
+              disabled={posting || !isBalanced}
+              className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-xl font-medium text-sm"
+            >
               {posting ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />}
               {posting ? "Posting..." : "Approve & post to QBO"}
             </button>
           </div>
         </div>
+
+        {/* Save template modal */}
+        {showSaveModal && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+            <div className="bg-white rounded-2xl border border-gray-200 w-full max-w-sm p-6 shadow-xl">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-base font-semibold text-gray-900">Save this configuration</h2>
+                <button onClick={() => setShowSaveModal(false)} className="text-gray-400 hover:text-gray-600">
+                  <X size={18} />
+                </button>
+              </div>
+
+              {templateSaved ? (
+                <div className="flex flex-col items-center py-4 gap-3 text-green-600">
+                  <CheckCircle size={32} />
+                  <p className="text-sm font-medium">Template saved!</p>
+                </div>
+              ) : (
+                <>
+                  <p className="text-sm text-gray-500 mb-4">
+                    Give this configuration a name so you can reuse it for future allocations.
+                  </p>
+                  <input
+                    type="text"
+                    value={templateName}
+                    onChange={e => setTemplateName(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && saveAsTemplate()}
+                    placeholder="e.g. Month End Allocation"
+                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 mb-3 focus:outline-none focus:border-indigo-400"
+                    autoFocus
+                  />
+                  {saveTemplateError && (
+                    <p className="text-xs text-red-500 mb-3">{saveTemplateError}</p>
+                  )}
+                  <button
+                    onClick={saveAsTemplate}
+                    disabled={savingTemplate}
+                    className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-xl font-medium text-sm flex items-center justify-center gap-2"
+                  >
+                    {savingTemplate ? <Loader2 size={14} className="animate-spin" /> : <BookmarkPlus size={14} />}
+                    {savingTemplate ? "Saving..." : "Save template"}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
 
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 text-red-700 text-sm">{error}</div>
@@ -182,27 +284,38 @@ function ReviewContent() {
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
               <label className="block text-xs text-gray-500 mb-1">Journal entry date</label>
-              <input type="date" value={jeDate} onChange={e => setJeDate(e.target.value)}
-                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2" />
+              <input
+                type="date" value={jeDate}
+                onChange={e => setJeDate(e.target.value)}
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2"
+              />
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1">Journal number (optional)</label>
-              <input type="text" value={journalNumber} onChange={e => setJournalNumber(e.target.value)}
+              <input
+                type="text" value={journalNumber}
+                onChange={e => setJournalNumber(e.target.value)}
                 placeholder="e.g. JE-2026-05"
-                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2" />
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2"
+              />
             </div>
           </div>
           <div>
             <div className="flex items-center justify-between mb-1">
               <label className="block text-xs text-gray-500">Default description (applies to all lines)</label>
-              <button onClick={applyDescriptionToAll}
-                className="text-xs text-indigo-600 hover:text-indigo-700 font-medium">
+              <button
+                onClick={applyDescriptionToAll}
+                className="text-xs text-indigo-600 hover:text-indigo-700 font-medium"
+              >
                 Apply to all lines
               </button>
             </div>
-            <input type="text" value={defaultDescription} onChange={e => setDefaultDescription(e.target.value)}
+            <input
+              type="text" value={defaultDescription}
+              onChange={e => setDefaultDescription(e.target.value)}
               placeholder="e.g. May 2026 Division Allocation"
-              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2" />
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2"
+            />
           </div>
         </div>
 
@@ -247,21 +360,27 @@ function ReviewContent() {
                 <span className="col-span-3 text-sm font-medium text-gray-900 truncate">{line.account_name}</span>
                 <span className="col-span-2 text-sm text-blue-600">Division A</span>
                 <div className="col-span-4">
-                  <input type="text"
+                  <input
+                    type="text"
                     value={line.division_a_description}
                     onChange={e => updateLine(i, "division_a_description", e.target.value)}
                     className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-indigo-400"
-                    placeholder="Line description..." />
+                    placeholder="Line description..."
+                  />
                 </div>
                 <span className="col-span-1 text-sm text-right text-gray-400"></span>
                 <div className="col-span-1">
-                  <input type="number"
+                  <input
+                    type="number"
                     value={line.division_a_amount_edited}
                     onChange={e => updateLine(i, "division_a_amount_edited", parseFloat(e.target.value) || 0)}
-                    className="w-full text-xs text-right border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-indigo-400 text-red-500" />
+                    className="w-full text-xs text-right border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-indigo-400 text-red-500"
+                  />
                 </div>
-                <button onClick={() => toggleLine(i)}
-                  className="col-span-1 flex justify-end text-gray-300 hover:text-gray-500">
+                <button
+                  onClick={() => toggleLine(i)}
+                  className="col-span-1 flex justify-end text-gray-300 hover:text-gray-500"
+                >
                   {expandedLines[i] ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                 </button>
               </div>
@@ -270,17 +389,21 @@ function ReviewContent() {
                 <span className="col-span-3 text-sm font-medium text-gray-900 truncate">{line.account_name}</span>
                 <span className="col-span-2 text-sm text-teal-600">Division B</span>
                 <div className="col-span-4">
-                  <input type="text"
+                  <input
+                    type="text"
                     value={line.division_b_description}
                     onChange={e => updateLine(i, "division_b_description", e.target.value)}
                     className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-indigo-400"
-                    placeholder="Line description..." />
+                    placeholder="Line description..."
+                  />
                 </div>
                 <div className="col-span-1">
-                  <input type="number"
+                  <input
+                    type="number"
                     value={line.division_b_amount_edited}
                     onChange={e => updateLine(i, "division_b_amount_edited", parseFloat(e.target.value) || 0)}
-                    className="w-full text-xs text-right border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-indigo-400 text-green-600" />
+                    className="w-full text-xs text-right border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-indigo-400 text-green-600"
+                  />
                 </div>
                 <span className="col-span-1 text-sm text-right text-gray-400"></span>
                 <span className="col-span-1"></span>
@@ -304,18 +427,18 @@ function ReviewContent() {
 function ReviewPageInner() {
   const params = useSearchParams();
   const t = params.get("t") ?? "0";
-  return (
-    <ReviewContent key={t} />
-  );
+  return <ReviewContent key={t} />;
 }
 
 export default function ReviewPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin" size={20} /></div>}>
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="animate-spin" size={20} />
+      </div>
+    }>
       <ReviewPageInner />
     </Suspense>
   );
 }
-// v7
-
-
+// v8
