@@ -1,18 +1,18 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
 
+type CookieToSet = { name: string; value: string; options?: Record<string, unknown> };
+
 const PUBLIC_ROUTES = ["/", "/login", "/signup", "/api/auth"];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Allow public routes and all their sub-paths
   const isPublic = PUBLIC_ROUTES.some(route =>
     pathname === route || pathname.startsWith(route + "/")
   );
   if (isPublic) return NextResponse.next();
 
-  // Create a response to potentially modify cookies
   let response = NextResponse.next({ request: req });
 
   const supabase = createServerClient(
@@ -21,11 +21,11 @@ export async function middleware(req: NextRequest) {
     {
       cookies: {
         getAll() { return req.cookies.getAll(); },
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet: CookieToSet[]) {
           cookiesToSet.forEach(({ name, value }) => req.cookies.set(name, value));
           response = NextResponse.next({ request: req });
           cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
+            response.cookies.set(name, value, options as Parameters<typeof response.cookies.set>[2])
           );
         },
       },
@@ -34,7 +34,6 @@ export async function middleware(req: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Not logged in — redirect to login
   if (!user) {
     const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("returnTo", pathname);
