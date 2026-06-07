@@ -5,6 +5,8 @@ import { cookies } from "next/headers";
 import { getServiceSupabase } from "@/lib/supabase";
 import { QBOTokens } from "@/types";
 
+type CookieToSet = { name: string; value: string; options?: Record<string, unknown> };
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const code = searchParams.get("code");
@@ -15,7 +17,6 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // Get current authenticated user
     const cookieStore = await cookies();
     const supabaseAuth = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -23,20 +24,20 @@ export async function GET(req: NextRequest) {
       {
         cookies: {
           getAll() { return cookieStore.getAll(); },
-          setAll(cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]) {
+          setAll(cookiesToSet: CookieToSet[]) {
             cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
+              cookieStore.set(name, value, options as Parameters<typeof cookieStore.set>[2])
             );
           },
         },
       }
     );
+
     const { data: { user } } = await supabaseAuth.auth.getUser();
     if (!user) {
       return NextResponse.redirect(new URL("/login", req.url));
     }
 
-    // Exchange code for QBO tokens
     const credentials = Buffer.from(
       `${process.env.QBO_CLIENT_ID}:${process.env.QBO_CLIENT_SECRET}`
     ).toString("base64");
@@ -51,7 +52,6 @@ export async function GET(req: NextRequest) {
       { headers: { Authorization: `Basic ${credentials}`, "Content-Type": "application/x-www-form-urlencoded" } }
     );
 
-    // Upsert tenant linked to this user
     const db = getServiceSupabase();
     const { data: tenant, error } = await db
       .from("tenants")
@@ -67,7 +67,6 @@ export async function GET(req: NextRequest) {
 
     if (error) throw error;
 
-    // Check if setup complete
     const { data: rules } = await db
       .from("allocation_rules")
       .select("id")
@@ -94,4 +93,3 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL("/dashboard?error=qbo_auth_failed", req.url));
   }
 }
-
