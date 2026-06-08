@@ -77,6 +77,20 @@ export async function fetchLocations(
   );
   return data.QueryResponse.Department ?? [];
 }
+export async function fetchCompanyInfo(
+  tenantId: string, realmId: string, accessToken: string, refreshToken: string
+): Promise<{ CompanyName: string; Country: string } | null> {
+  try {
+    const data = await qboRequest<{ QueryResponse: { CompanyInfo: { CompanyName: string; Country: string }[] } }>(
+      tenantId, realmId, accessToken, refreshToken, "/query",
+      { query: "SELECT CompanyName, Country FROM CompanyInfo" }
+    );
+    return data.QueryResponse?.CompanyInfo?.[0] ?? null;
+  } catch {
+    return null;
+  }
+}
+
 
 // ── General Ledger balance extraction ────────────────────────────────────────
 // Parses a GL report response and returns the sum of all Section-level totals.
@@ -294,4 +308,5 @@ export async function voidJournalEntry(
     throw err;
   }
 }
+
 
