@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServiceSupabase } from "@/lib/supabase";
-import { voidJournalEntry, QBOAuthExpiredError } from "@/lib/qbo-client";
 
 export async function POST(req: NextRequest) {
   const tenantId = req.cookies.get("tenant_id")?.value;
@@ -8,7 +7,6 @@ export async function POST(req: NextRequest) {
 
   const { draftId, note } = await req.json();
   if (!draftId) return NextResponse.json({ error: "draftId required" }, { status: 400 });
-
 
   const db = getServiceSupabase();
 
@@ -19,38 +17,16 @@ export async function POST(req: NextRequest) {
     .eq("tenant_id", tenantId)
     .single();
 
-
   if (!draft) return NextResponse.json({ error: "Draft not found" }, { status: 404 });
   if (draft.status !== "posted") return NextResponse.json({ error: "Only posted allocations can be voided" }, { status: 400 });
-  if (!draft.qbo_journal_entry_id) return NextResponse.json({ error: "No QBO journal entry ID found" }, { status: 400 });
 
-  // Locked entries can still be voided — that's intentional (void is the only escape from locked)
-  const { data: tenant } = await db
-    .from("tenants").select("*").eq("id", tenantId).single();
-  if (!tenant) return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
-
-  try {
-    await voidJournalEntry(
-      tenant.id,
-      tenant.qbo_realm_id,
-      tenant.qbo_access_token,
-      tenant.qbo_refresh_token,
-      draft.qbo_journal_entry_id
-    );
-  } catch (err) {
-    if (err instanceof QBOAuthExpiredError) {
-      return NextResponse.json({ error: "Your QuickBooks connection has expired. Please reconnect QBO from the dashboard.", qbo_reconnect_required: true }, { status: 401 });
-    }
-    const msg = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ error: `Failed to void in QBO: ${msg}` }, { status: 500 });
-  }
-
+  // Mark voided in Allocate only — user must manually void in QBO
   await db
     .from("allocation_drafts")
     .update({
       status: "voided",
       voided_at: new Date().toISOString(),
-      locked_at: null, // unlock if it was locked
+      locked_at: null,
     })
     .eq("id", draftId);
 
@@ -66,6 +42,6 @@ export async function POST(req: NextRequest) {
     note: note || null,
   });
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, manual_void_required: true, qbo_journal_entry_id: draft.qbo_journal_entry_id });
 }
-// v2
+// v3

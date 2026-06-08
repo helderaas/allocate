@@ -268,7 +268,7 @@ export default function HistoryPage() {
                 </button>
               </div>
               <p className="text-sm text-gray-500 mb-4">
-                This will void the journal entry in QuickBooks. This action cannot be undone.
+                This will mark the allocation as voided in Allocate. You will need to <strong>manually void the journal entry in QuickBooks</strong> as well.
               </p>
               <div className="mb-4">
                 <label className="block text-xs text-gray-500 mb-1">Reason (optional)</label>

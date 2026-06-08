@@ -390,7 +390,7 @@ export default function DashboardPage() {
                 {a.status === "posted" && (
                   showVoidConfirm === a.id ? (
                     <div className="flex items-center gap-1.5">
-                      <span className="text-xs text-gray-500">Void this?</span>
+                      <span className="text-xs text-gray-500">Mark as voided? (also void manually in QBO)</span>
                       <button
                         onClick={() => voidAllocation(a.id)}
                         disabled={voidingId === a.id}
