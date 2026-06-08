@@ -262,7 +262,7 @@ export async function fetchRevenueSplit(
     divisions.map(div => {
       const filterId = trackingType === "class" ? div.qbo_class_id : div.qbo_location_id;
       if (!filterId) return Promise.resolve({ Report: { Rows: { Row: [] } } });
-      const filterParam = trackingType === "class" ? { class: filterId } : { department: filterId };
+      const filterParam: Record<string, string> = trackingType === "class" ? { class: filterId } : { department: filterId };
       return qboRequest<{ Report: PLReport }>(
         tenantId, realmId, accessToken, refreshToken,
         "/reports/ProfitAndLoss",
@@ -337,6 +337,7 @@ export async function voidJournalEntry(
     throw err;
   }
 }
+
 
 
 
