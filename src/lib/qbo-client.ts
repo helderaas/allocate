@@ -135,7 +135,21 @@ function sumGLSections(rows: GLRow[]): number {
 //
 // All three calls run in parallel per account, then all accounts run in parallel.
 
+export interface Division {
+  id: string;
+  name: string;
+  qbo_location_id?: string | null;
+  qbo_class_id?: string | null;
+}
+
 export interface GLBreakdown {
+  total: number;
+  taggedPerDivision: Record<string, number>; // divisionId -> tagged amount
+  untagged: number;
+}
+
+// Legacy interface for backwards compatibility
+export interface GLBreakdownLegacy {
   total: number;
   taggedA: number;
   taggedB: number;
@@ -150,12 +164,11 @@ export async function fetchGLBalances(
   startDate: string,
   endDate: string,
   accountIds: string[],
-  divisionALocationId: string,
-  divisionBLocationId: string
+  divisions: Division[],
+  trackingType: "location" | "class" = "location"
 ): Promise<Record<string, GLBreakdown>> {
   const results: Record<string, GLBreakdown> = {};
 
-  // Fetch all accounts in parallel, each with 3 GL calls
   await Promise.all(
     accountIds.map(async (accountId) => {
       const baseParams = {
@@ -165,30 +178,36 @@ export async function fetchGLBalances(
         accounting_method: "Accrual",
       };
 
-      const [glTotal, glDivA, glDivB] = await Promise.all([
+      // Fetch total + each division in parallel
+      const [glTotal, ...divisionGLs] = await Promise.all([
         qboRequest<{ Rows: { Row: GLRow[] } }>(
           tenantId, realmId, accessToken, refreshToken,
           "/reports/GeneralLedger", baseParams
         ),
-        qboRequest<{ Rows: { Row: GLRow[] } }>(
-          tenantId, realmId, accessToken, refreshToken,
-          "/reports/GeneralLedger",
-          { ...baseParams, department: divisionALocationId }
-        ),
-        qboRequest<{ Rows: { Row: GLRow[] } }>(
-          tenantId, realmId, accessToken, refreshToken,
-          "/reports/GeneralLedger",
-          { ...baseParams, department: divisionBLocationId }
-        ),
+        ...divisions.map(div => {
+          const filterId = trackingType === "class" ? div.qbo_class_id : div.qbo_location_id;
+          if (!filterId) return Promise.resolve({ Rows: { Row: [] } });
+          const filterParam = trackingType === "class" ? { class: filterId } : { department: filterId };
+          return qboRequest<{ Rows: { Row: GLRow[] } }>(
+            tenantId, realmId, accessToken, refreshToken,
+            "/reports/GeneralLedger",
+            { ...baseParams, ...filterParam }
+          );
+        }),
       ]);
 
       const total = sumGLSections(glTotal?.Rows?.Row ?? []);
-      const taggedA = sumGLSections(glDivA?.Rows?.Row ?? []);
-      const taggedB = sumGLSections(glDivB?.Rows?.Row ?? []);
-      // Guard against negative untagged (shouldn't happen but be safe)
-      const untagged = Math.max(0, total - taggedA - taggedB);
+      const taggedPerDivision: Record<string, number> = {};
+      let totalTagged = 0;
 
-      results[accountId] = { total, taggedA, taggedB, untagged };
+      divisions.forEach((div, i) => {
+        const tagged = sumGLSections(divisionGLs[i]?.Rows?.Row ?? []);
+        taggedPerDivision[div.id] = tagged;
+        totalTagged += tagged;
+      });
+
+      const untagged = Math.max(0, total - totalTagged);
+      results[accountId] = { total, taggedPerDivision, untagged };
     })
   );
 
@@ -231,34 +250,42 @@ export async function fetchRevenueSplit(
   refreshToken: string,
   startDate: string,
   endDate: string,
-  divisionALocationId: string,
-  divisionBLocationId: string
-): Promise<{ divisionAPct: number; divisionBPct: number }> {
-  const [plA, plB] = await Promise.all([
-    qboRequest<{ Report: PLReport }>(
-      tenantId, realmId, accessToken, refreshToken,
-      "/reports/ProfitAndLoss",
-      { start_date: startDate, end_date: endDate, accounting_method: "Accrual", department: divisionALocationId }
-    ),
-    qboRequest<{ Report: PLReport }>(
-      tenantId, realmId, accessToken, refreshToken,
-      "/reports/ProfitAndLoss",
-      { start_date: startDate, end_date: endDate, accounting_method: "Accrual", department: divisionBLocationId }
-    ),
-  ]);
+  divisions: Division[],
+  trackingType: "location" | "class" = "location"
+): Promise<Record<string, number>> {
+  // Returns a map of divisionId -> revenue percentage
+  if (divisions.length === 0) return {};
 
-  const revenueA = Math.abs(sumIncomeFromPL((plA?.Report?.Rows?.Row ?? []) as PLRow[]));
-  const revenueB = Math.abs(sumIncomeFromPL((plB?.Report?.Rows?.Row ?? []) as PLRow[]));
-  const totalRevenue = revenueA + revenueB;
+  const plResults = await Promise.all(
+    divisions.map(div => {
+      const filterId = trackingType === "class" ? div.qbo_class_id : div.qbo_location_id;
+      if (!filterId) return Promise.resolve({ Report: { Rows: { Row: [] } } });
+      const filterParam = trackingType === "class" ? { class: filterId } : { department: filterId };
+      return qboRequest<{ Report: PLReport }>(
+        tenantId, realmId, accessToken, refreshToken,
+        "/reports/ProfitAndLoss",
+        { start_date: startDate, end_date: endDate, accounting_method: "Accrual", ...filterParam }
+      );
+    })
+  );
 
+  const revenues = plResults.map(pl =>
+    Math.abs(sumIncomeFromPL((pl?.Report?.Rows?.Row ?? []) as PLRow[]))
+  );
+  const totalRevenue = revenues.reduce((sum, r) => sum + r, 0);
+
+  // Fall back to equal split if no revenue data
   if (totalRevenue === 0) {
-    return { divisionAPct: 50, divisionBPct: 50 };
+    const equalPct = Math.round(10000 / divisions.length) / 100;
+    return Object.fromEntries(divisions.map(d => [d.id, equalPct]));
   }
 
-  return {
-    divisionAPct: Math.round((revenueA / totalRevenue) * 10000) / 100,
-    divisionBPct: Math.round((revenueB / totalRevenue) * 10000) / 100,
-  };
+  return Object.fromEntries(
+    divisions.map((d, i) => [
+      d.id,
+      Math.round((revenues[i] / totalRevenue) * 10000) / 100,
+    ])
+  );
 }
 
 export async function postJournalEntry(
@@ -308,5 +335,6 @@ export async function voidJournalEntry(
     throw err;
   }
 }
+
 
 
