@@ -18,6 +18,8 @@ export async function GET(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  console.log("History API — tenantId:", tenantId, "rows returned:", allDrafts?.length, "ids:", allDrafts?.map(d => d.id + ":" + d.status));
+
   if (showAll) {
     const drafts = (allDrafts ?? []).sort((a, b) => b.period.localeCompare(a.period));
     return NextResponse.json({ drafts }, { headers: { "Cache-Control": "no-store" } });

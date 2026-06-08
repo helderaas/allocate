@@ -56,7 +56,7 @@ export default function DashboardPage() {
 
   const loadHistory = useCallback(async () => {
     try {
-      const res = await fetch("/api/allocations/history", { cache: "no-store" });
+      const res = await fetch("/api/allocations/history?t=" + Date.now(), { cache: "no-store" });
       const data = await res.json();
       if (res.ok) {
         setAllHistory(data.drafts ?? []);
