@@ -113,25 +113,28 @@ export default function DashboardPage() {
   const voidAllocation = async (draftId: string) => {
     setVoidingId(draftId);
     setError("");
+    setQboReconnectRequired(false);
     try {
       const res = await fetch("/api/allocations/void", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ draftId }),
       });
-      const data = await res.json();
+      let data: { error?: string; qbo_reconnect_required?: boolean } = {};
+      try { data = await res.json(); } catch { /* empty response */ }
       if (!res.ok) {
         if (data.qbo_reconnect_required) {
           setQboReconnectRequired(true);
           setError("Your QuickBooks connection has expired. Please reconnect QuickBooks.");
         } else {
-          setError(data.error ?? "Failed to void allocation");
+          setError(data.error || `Void failed (status ${res.status}). Check your QBO connection.`);
         }
       } else {
         loadHistory();
       }
-    } catch {
-      setError("Failed to void allocation");
+    } catch (e) {
+      setError("Network error — could not reach the server. Please try again.");
+      console.error("Void error:", e);
     }
     setVoidingId(null);
     setShowVoidConfirm(null);
@@ -173,14 +176,20 @@ export default function DashboardPage() {
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-6 text-red-700 text-sm flex items-center justify-between gap-3">
             <span>{error}</span>
-            {qboReconnectRequired && (
-              <a
-                href={`https://appcenter.intuit.com/connect/oauth2?client_id=${process.env.NEXT_PUBLIC_QBO_CLIENT_ID}&redirect_uri=${process.env.NEXT_PUBLIC_QBO_REDIRECT_URI}&response_type=code&scope=com.intuit.quickbooks.accounting%20openid%20profile%20email&state=allocate_connect`}
-                className="shrink-0 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-medium"
-              >
-                Reconnect QuickBooks
-              </a>
-            )}
+            {qboReconnectRequired && (() => {
+              const url = new URL("https://appcenter.intuit.com/connect/oauth2");
+              url.searchParams.set("client_id", process.env.NEXT_PUBLIC_QBO_CLIENT_ID ?? "");
+              url.searchParams.set("redirect_uri", process.env.NEXT_PUBLIC_QBO_REDIRECT_URI ?? "");
+              url.searchParams.set("response_type", "code");
+              url.searchParams.set("scope", "com.intuit.quickbooks.accounting openid profile email");
+              url.searchParams.set("state", "allocate_connect");
+              return (
+                <a href={url.toString()}
+                  className="shrink-0 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-medium">
+                  Reconnect QuickBooks
+                </a>
+              );
+            })()}
           </div>
         )}
 
