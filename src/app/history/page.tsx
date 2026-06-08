@@ -97,7 +97,7 @@ export default function HistoryPage() {
 
   const toggleLock = async (draftId: string, currentlyLocked: boolean) => {
     setLockingId(draftId);
-    setError("");
+    setVoidError("");
     try {
       const res = await fetch("/api/allocations/lock", {
         method: "POST",
@@ -106,12 +106,12 @@ export default function HistoryPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? "Failed to update lock");
+        setVoidError(data.error ?? "Failed to update lock");
       } else {
         loadHistory();
       }
     } catch {
-      setError("Failed to update lock");
+      setVoidError("Failed to update lock");
     }
     setLockingId(null);
   };
