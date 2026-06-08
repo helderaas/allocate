@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServiceSupabase } from "@/lib/supabase";
-import { fetchGLBalances, fetchRevenueSplit } from "@/lib/qbo-client";
+import { fetchGLBalances, fetchRevenueSplit, Division } from "@/lib/qbo-client";
 import { calculateAllocationLines } from "@/lib/allocation-engine";
 
 export async function POST(req: NextRequest) {
@@ -12,74 +12,70 @@ export async function POST(req: NextRequest) {
   const db = getServiceSupabase();
 
   const { data: template } = await db
-    .from("allocation_templates")
-    .select("*")
-    .eq("id", templateId)
-    .eq("tenant_id", tenantId)
-    .single();
+    .from("allocation_templates").select("*").eq("id", templateId).eq("tenant_id", tenantId).single();
   if (!template) return NextResponse.json({ error: "Template not found" }, { status: 404 });
 
   const { data: tenant } = await db
-    .from("tenants")
-    .select("*")
-    .eq("id", tenantId)
-    .single();
+    .from("tenants").select("*").eq("id", tenantId).single();
   if (!tenant) return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
 
-  const rules = typeof template.rules === "string"
-    ? JSON.parse(template.rules)
-    : template.rules;
+  const rules = typeof template.rules === "string" ? JSON.parse(template.rules) : template.rules;
   if (!rules?.length) return NextResponse.json({ error: "Template has no rules" }, { status: 400 });
 
+  // Load divisions from new table, fall back to legacy A/B
+  const { data: divisionRows } = await db
+    .from("divisions").select("*").eq("tenant_id", tenantId).order("sort_order");
+
+  let divisions: Division[];
+  if (divisionRows && divisionRows.length > 0) {
+    divisions = divisionRows.map(d => ({
+      id: d.id, name: d.name,
+      qbo_location_id: d.qbo_location_id,
+      qbo_class_id: d.qbo_class_id,
+    }));
+  } else {
+    divisions = [
+      { id: "div-a", name: tenant.division_a_location_name ?? "Division A", qbo_location_id: tenant.division_a_location_id },
+      { id: "div-b", name: tenant.division_b_location_name ?? "Division B", qbo_location_id: tenant.division_b_location_id },
+    ];
+  }
+
+  const trackingType = tenant.division_tracking_type ?? "location";
   const accountIds = rules.map((r: { qbo_account_id: string }) => r.qbo_account_id);
 
-  // Same GL-based approach as run/route.ts
   const [glBalances, revenueSplit] = await Promise.all([
     fetchGLBalances(
       tenant.id, tenant.qbo_realm_id,
       tenant.qbo_access_token, tenant.qbo_refresh_token,
-      startDate, endDate,
-      accountIds,
-      tenant.division_a_location_id,
-      tenant.division_b_location_id
+      startDate, endDate, accountIds, divisions, trackingType
     ),
     fetchRevenueSplit(
       tenant.id, tenant.qbo_realm_id,
       tenant.qbo_access_token, tenant.qbo_refresh_token,
-      startDate, endDate,
-      tenant.division_a_location_id,
-      tenant.division_b_location_id
+      startDate, endDate, divisions, trackingType
     ),
   ]);
 
-  const lines = calculateAllocationLines(rules, glBalances, revenueSplit);
+  const lines = calculateAllocationLines(rules, glBalances, revenueSplit, divisions);
 
   const totalDebits = lines.reduce((sum, l) => sum + l.division_a_amount + l.division_b_amount, 0);
   const totalCredits = lines.reduce((sum, l) => sum + l.untagged_amount, 0);
 
-  // Only delete existing drafts — never touch posted or voided entries
   await db.from("allocation_drafts").delete()
-    .eq("tenant_id", tenantId)
-    .eq("period", period)
-    .eq("status", "draft");
+    .eq("tenant_id", tenantId).eq("period", period).eq("status", "draft");
 
   const { data: draft, error } = await db
     .from("allocation_drafts")
     .insert({
-      tenant_id: tenantId,
-      period,
-      status: "draft",
+      tenant_id: tenantId, period, status: "draft",
       lines: JSON.stringify(lines),
-      total_debits: totalDebits,
-      total_credits: totalCredits,
+      total_debits: totalDebits, total_credits: totalCredits,
       je_date: jeDate || endDate,
       description: description || `${template.name} - ${period}`,
       journal_number: journalNumber,
     })
-    .select()
-    .single();
+    .select().single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ draft });
 }
-
