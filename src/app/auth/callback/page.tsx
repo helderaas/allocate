@@ -7,59 +7,74 @@ import { Suspense } from "react";
 
 function EmailCallbackContent() {
   const searchParams = useSearchParams();
-  const [error, setError] = useState("");
+  const [status, setStatus] = useState("Verifying your link...");
 
   useEffect(() => {
-    const code = searchParams.get("code");
-    
-    if (!code) {
-      window.location.href = "/login?error=invalid_link";
-      return;
-    }
+    async function handleCallback() {
+      const code = searchParams.get("code");
+      const errorDesc = searchParams.get("error_description");
+      const error = searchParams.get("error");
 
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-
-    // Exchange code client-side (has access to PKCE verifier in localStorage)
-    supabase.auth.exchangeCodeForSession(code).then(async ({ data, error }) => {
-      if (error || !data.session) {
-        setError(error?.message ?? "Invalid or expired link");
-        setTimeout(() => { window.location.href = "/login?error=invalid_link"; }, 2000);
+      // Handle error from Supabase
+      if (error) {
+        setStatus("Link expired or invalid. Redirecting...");
+        setTimeout(() => { window.location.href = "/forgot-password?error=expired"; }, 2000);
         return;
       }
 
-      // Now set our httpOnly cookies via API
+      if (!code) {
+        window.location.href = "/login";
+        return;
+      }
+
+      // Use implicit flow client (no PKCE)
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          auth: {
+            flowType: "implicit",
+          }
+        }
+      );
+
+      setStatus("Exchanging code...");
+      const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+
+      if (exchangeError || !data.session) {
+        console.error("Exchange error:", exchangeError?.message);
+        setStatus("Link expired. Redirecting...");
+        setTimeout(() => { window.location.href = "/forgot-password?error=expired"; }, 2000);
+        return;
+      }
+
+      setStatus("Setting session...");
+      // Set httpOnly cookies via API
       const res = await fetch("/api/auth/set-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           access_token: data.session.access_token,
           refresh_token: data.session.refresh_token,
-          is_reset: true,
         }),
         credentials: "include",
       });
 
       if (res.ok) {
+        setStatus("Redirecting to reset password...");
         window.location.href = "/reset-password";
       } else {
         window.location.href = "/login?error=session_error";
       }
-    });
-  }, [searchParams]);
+    }
 
-  if (error) return (
-    <div className="min-h-screen flex items-center justify-center">
-      <p className="text-red-500 text-sm">{error}</p>
-    </div>
-  );
+    handleCallback();
+  }, [searchParams]);
 
   return (
     <div className="min-h-screen flex items-center justify-center gap-3 text-gray-500">
       <Loader2 className="animate-spin" size={20} />
-      <span>Verifying your link...</span>
+      <span>{status}</span>
     </div>
   );
 }
