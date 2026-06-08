@@ -9,9 +9,14 @@ type CookieToSet = { name: string; value: string; options?: Record<string, unkno
 
 export function getServiceSupabase() {
   return createClient(supabaseUrl, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+    db: { schema: "public" },
     global: {
-      headers: { "Cache-Control": "no-cache, no-store" }
-    }
+      headers: {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+      }
+    },
+    auth: { persistSession: false }
   });
 }
 

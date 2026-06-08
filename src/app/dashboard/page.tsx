@@ -60,9 +60,9 @@ export default function DashboardPage() {
       const data = await res.json();
       if (res.ok) {
         setAllHistory([...(data.drafts ?? [])]);
-        // If empty but we might have just posted, retry up to 3 times
-        if (data.drafts?.length === 0 && retryCount < 3) {
-          setTimeout(() => loadHistory(retryCount + 1), 2000);
+        // Retry up to 10 times with 3 second gaps to handle replica lag
+        if (data.drafts?.length === 0 && retryCount < 10) {
+          setTimeout(() => loadHistory(retryCount + 1), 3000);
         }
       } else {
         console.error("History API error:", data);
