@@ -7,106 +7,85 @@ import { Suspense } from "react";
 
 function CallbackContent() {
   const searchParams = useSearchParams();
-  const [status, setStatus] = useState("Verifying your link...");
+  const [status, setStatus] = useState("Verifying...");
 
   useEffect(() => {
     async function handleCallback() {
-      const error = searchParams.get("error");
-      const errorDesc = searchParams.get("error_description");
+      // Log ALL params to see what Supabase sends after processing the link
+      const allParams: Record<string, string> = {};
+      searchParams.forEach((v, k) => { allParams[k] = v; });
+      console.log("Callback params:", JSON.stringify(allParams));
+      setStatus("Params: " + JSON.stringify(allParams));
 
+      const error = searchParams.get("error");
       if (error) {
-        setStatus("Link expired. Redirecting...");
-        setTimeout(() => { window.location.href = "/forgot-password?error=expired"; }, 2000);
+        const desc = searchParams.get("error_description") ?? error;
+        setStatus("Error: " + desc);
+        setTimeout(() => { window.location.href = "/forgot-password?error=expired"; }, 3000);
         return;
       }
 
-      // Handle token_hash (from admin generateLink - no PKCE needed)
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+
+      // Try token_hash first
       const tokenHash = searchParams.get("token_hash");
-      const type = searchParams.get("type") ?? "recovery";
+      const type = (searchParams.get("type") ?? "recovery") as "recovery" | "email";
 
       if (tokenHash) {
-        const supabase = createBrowserClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-        );
-
-        setStatus("Verifying token...");
+        setStatus("Verifying token_hash...");
         const { data, error: verifyError } = await supabase.auth.verifyOtp({
           token_hash: tokenHash,
-          type: type as "recovery" | "email",
+          type,
         });
-
-        if (verifyError || !data.session) {
-          console.error("Token verify error:", verifyError?.message);
-          setStatus("Link invalid. Redirecting...");
-          setTimeout(() => { window.location.href = "/forgot-password?error=expired"; }, 2000);
+        console.log("token_hash result:", verifyError?.message ?? "ok", !!data.session);
+        if (!verifyError && data.session) {
+          await setSession(data.session.access_token, data.session.refresh_token);
           return;
         }
-
-        setStatus("Setting session...");
-        const res = await fetch("/api/auth/set-session", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            access_token: data.session.access_token,
-            refresh_token: data.session.refresh_token,
-          }),
-          credentials: "include",
-        });
-
-        if (res.ok) {
-          window.location.href = "/reset-password";
-        } else {
-          window.location.href = "/login?error=session_error";
-        }
-        return;
       }
 
-      // Handle code (PKCE flow - fallback)
+      // Try code exchange
       const code = searchParams.get("code");
       if (code) {
-        const supabase = createBrowserClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-        );
-
         setStatus("Exchanging code...");
-        const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-
-        if (exchangeError || !data.session) {
-          setStatus("Link expired. Redirecting...");
-          setTimeout(() => { window.location.href = "/forgot-password?error=expired"; }, 2000);
+        const { data, error: exchError } = await supabase.auth.exchangeCodeForSession(code);
+        console.log("code exchange result:", exchError?.message ?? "ok", !!data.session);
+        if (!exchError && data.session) {
+          await setSession(data.session.access_token, data.session.refresh_token);
           return;
         }
-
-        const res = await fetch("/api/auth/set-session", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            access_token: data.session.access_token,
-            refresh_token: data.session.refresh_token,
-          }),
-          credentials: "include",
-        });
-
-        if (res.ok) {
-          window.location.href = "/reset-password";
-        } else {
-          window.location.href = "/login?error=session_error";
-        }
-        return;
       }
 
-      window.location.href = "/login";
+      // Nothing worked
+      setStatus("Failed — check console for params");
+      setTimeout(() => { window.location.href = "/forgot-password?error=expired"; }, 3000);
+    }
+
+    async function setSession(accessToken: string, refreshToken: string) {
+      setStatus("Setting session...");
+      const res = await fetch("/api/auth/set-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ access_token: accessToken, refresh_token: refreshToken }),
+        credentials: "include",
+      });
+      if (res.ok) {
+        window.location.href = "/reset-password";
+      } else {
+        window.location.href = "/login?error=session_error";
+      }
     }
 
     handleCallback();
   }, [searchParams]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center gap-3 text-gray-500">
+    <div className="min-h-screen flex items-center justify-center gap-3 text-gray-500 flex-col">
       <Loader2 className="animate-spin" size={20} />
-      <span>{status}</span>
+      <span className="text-xs max-w-md text-center">{status}</span>
     </div>
   );
 }
