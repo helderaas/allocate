@@ -57,11 +57,14 @@ export default function DashboardPage() {
   const loadHistory = useCallback(async () => {
     try {
       const res = await fetch("/api/allocations/history", { cache: "no-store" });
+      const data = await res.json();
       if (res.ok) {
-        const { drafts } = await res.json();
-        setAllHistory(drafts ?? []);
+        setAllHistory(data.drafts ?? []);
+      } else {
+        console.error("History API error:", data);
+        setError("Failed to load history: " + (data.error ?? res.status));
       }
-    } catch { /* non-blocking */ }
+    } catch (e) { console.error("History fetch error:", e); }
     setHistoryLoading(false);
   }, []);
 

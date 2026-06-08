@@ -51,13 +51,16 @@ export default function HistoryPage() {
     setLoading(true);
     try {
       const res = await fetch("/api/allocations/history?all=true", { cache: "no-store" });
+      const data = await res.json();
       if (res.ok) {
-        const { drafts } = await res.json();
-        setAllEntries((drafts ?? []).filter((d: AllocationDraftRow) =>
+        setAllEntries((data.drafts ?? []).filter((d: AllocationDraftRow) =>
           d.status === "posted" || d.status === "voided"
         ));
+      } else {
+        console.error("History API error:", data);
+        setVoidError("Failed to load history: " + (data.error ?? res.status));
       }
-    } catch { /* non-blocking */ }
+    } catch (e) { console.error("History fetch error:", e); }
     setLoading(false);
   }, []);
 
