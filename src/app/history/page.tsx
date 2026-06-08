@@ -37,7 +37,8 @@ export default function HistoryPage() {
   const [lockingId, setLockingId] = useState<string | null>(null);
   const [showVoidConfirm, setShowVoidConfirm] = useState<string | null>(null);
   const [voidNote, setVoidNote] = useState("");
-  const [error, setError] = useState("");
+  const [voidError, setVoidError] = useState("");
+  const [qboReconnectRequired, setQboReconnectRequired] = useState(false);
   const [filterYear, setFilterYear] = useState<string>("all");
 
   // Audit trail modal
@@ -64,25 +65,34 @@ export default function HistoryPage() {
 
   const voidAllocation = async (draftId: string) => {
     setVoidingId(draftId);
-    setError("");
+    setVoidError("");
+    setQboReconnectRequired(false);
     try {
       const res = await fetch("/api/allocations/void", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ draftId, note: voidNote }),
       });
-      const data = await res.json();
+      let data: { error?: string; qbo_reconnect_required?: boolean } = {};
+      try { data = await res.json(); } catch { /* empty body */ }
       if (!res.ok) {
-        setError(data.error ?? "Failed to void allocation");
-      } else {
-        loadHistory();
-        setVoidNote("");
+        if (data.qbo_reconnect_required) {
+          setQboReconnectRequired(true);
+          setVoidError("Your QuickBooks connection has expired. Please reconnect QuickBooks.");
+        } else {
+          setVoidError(data.error || `Void failed (status ${res.status}). Check your QBO connection.`);
+        }
+        setVoidingId(null);
+        return; // keep modal open so user sees the error
       }
-    } catch {
-      setError("Failed to void allocation");
+      loadHistory();
+      setVoidNote("");
+      setShowVoidConfirm(null);
+    } catch (e) {
+      console.error("Void error:", e);
+      setVoidError("Network error — could not reach the server. Please try again.");
     }
     setVoidingId(null);
-    setShowVoidConfirm(null);
   };
 
   const toggleLock = async (draftId: string, currentlyLocked: boolean) => {
@@ -175,9 +185,9 @@ export default function HistoryPage() {
           )}
         </div>
 
-        {error && (
+        {voidError && !showVoidConfirm && (
           <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-6 text-red-700 text-sm flex items-center gap-2">
-            <AlertCircle size={14} /> {error}
+            <AlertCircle size={14} /> {voidError}
           </div>
         )}
 
@@ -250,7 +260,7 @@ export default function HistoryPage() {
             <div className="bg-white rounded-2xl border border-gray-200 w-full max-w-sm p-6 shadow-xl">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-base font-semibold text-gray-900">Void this allocation?</h2>
-                <button onClick={() => { setShowVoidConfirm(null); setVoidNote(""); }} className="text-gray-400 hover:text-gray-600">
+                <button onClick={() => { setShowVoidConfirm(null); setVoidNote(""); setVoidError(""); setQboReconnectRequired(false); }} className="text-gray-400 hover:text-gray-600">
                   <X size={18} />
                 </button>
               </div>
@@ -268,9 +278,28 @@ export default function HistoryPage() {
                   autoFocus
                 />
               </div>
+              {voidError && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4 text-red-700 text-sm">
+                  {voidError}
+                  {qboReconnectRequired && (() => {
+                    const url = new URL("https://appcenter.intuit.com/connect/oauth2");
+                    url.searchParams.set("client_id", process.env.NEXT_PUBLIC_QBO_CLIENT_ID ?? "");
+                    url.searchParams.set("redirect_uri", process.env.NEXT_PUBLIC_QBO_REDIRECT_URI ?? "");
+                    url.searchParams.set("response_type", "code");
+                    url.searchParams.set("scope", "com.intuit.quickbooks.accounting openid profile email");
+                    url.searchParams.set("state", "allocate_connect");
+                    return (
+                      <a href={url.toString()}
+                        className="block mt-2 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-medium text-center">
+                        Reconnect QuickBooks
+                      </a>
+                    );
+                  })()}
+                </div>
+              )}
               <div className="flex gap-3">
                 <button
-                  onClick={() => { setShowVoidConfirm(null); setVoidNote(""); }}
+                  onClick={() => { setShowVoidConfirm(null); setVoidNote(""); setVoidError(""); setQboReconnectRequired(false); }}
                   className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50"
                 >
                   Cancel
