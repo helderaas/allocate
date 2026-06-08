@@ -28,7 +28,7 @@ interface SelectedDivision {
 interface SelectedAccount {
   account: QBOAccount;
   ruleType: "revenue_pct" | "fixed_split";
-  fixedPctFirst: number; // % for first division
+  fixedPctMap: Record<string, number>; // divisionId -> %
 }
 
 function NewAllocationContent() {
@@ -79,10 +79,10 @@ function NewAllocationContent() {
         const tmpl = (templates ?? []).find((t: { id: string }) => t.id === templateId);
         if (tmpl) {
           const preSelected = (tmpl.rules ?? [])
-            .map((r: { qbo_account_id: string; rule_type: "revenue_pct" | "fixed_split"; fixed_pct_division_a: number | null }) => {
+            .map((r: { qbo_account_id: string; rule_type: "revenue_pct" | "fixed_split"; fixed_pct_map?: Record<string, number>; fixed_pct_division_a: number | null }) => {
               const acct = (accts ?? []).find((a: QBOAccount) => a.Id === r.qbo_account_id);
               if (!acct) return null;
-              return { account: acct, ruleType: r.rule_type, fixedPctFirst: r.fixed_pct_division_a ?? 50 };
+              return { account: acct, ruleType: r.rule_type, fixedPctMap: r.fixed_pct_map ?? {} };
             })
             .filter(Boolean) as SelectedAccount[];
           setSelectedAccounts(preSelected);
@@ -173,7 +173,10 @@ function NewAllocationContent() {
           qbo_account_id: s.account.Id,
           qbo_account_name: s.account.FullyQualifiedName,
           rule_type: s.ruleType,
-          fixed_pct_division_a: s.fixedPctFirst,
+          fixed_pct_map: s.ruleType === "fixed_split" ? s.fixedPctMap : null,
+          fixed_pct_division_a: s.ruleType === "fixed_split"
+            ? (s.fixedPctMap[selectedDivisions[0]?.id] ?? 50)
+            : null,
         })),
       }),
     });
@@ -199,7 +202,15 @@ function NewAllocationContent() {
     setSelectedAccounts(prev => {
       const exists = prev.find(s => s.account.Id === acct.Id);
       if (exists) return prev.filter(s => s.account.Id !== acct.Id);
-      return [...prev, { account: acct, ruleType: "revenue_pct", fixedPctFirst: 50 }];
+      // Initialize equal split across current divisions
+      const equalPct = Math.round(100 / Math.max(selectedDivisions.length, 1));
+      const map: Record<string, number> = {};
+      selectedDivisions.forEach((d, i) => {
+        map[d.id] = i === selectedDivisions.length - 1
+          ? 100 - equalPct * (selectedDivisions.length - 1)
+          : equalPct;
+      });
+      return [...prev, { account: acct, ruleType: "revenue_pct", fixedPctMap: map }];
     });
   };
 
@@ -411,29 +422,48 @@ function NewAllocationContent() {
                     <option value="revenue_pct">Revenue %</option>
                     <option value="fixed_split">Fixed split</option>
                   </select>
-                  {s.ruleType === "fixed_split" && selectedDivisions.length === 2 && (
-                    <div className="flex items-center gap-1 shrink-0">
-                      <span className="text-xs text-gray-400">{selectedDivisions[0].name}:</span>
-                      <input
-                        type="number" min={0} max={100} value={s.fixedPctFirst}
-                        onChange={e => setSelectedAccounts(prev => prev.map(a =>
-                          a.account.Id === s.account.Id
-                            ? { ...a, fixedPctFirst: Math.min(100, Math.max(0, Number(e.target.value))) }
-                            : a
-                        ))}
-                        className="w-14 text-xs text-center border border-gray-200 rounded-lg px-1 py-1.5 focus:outline-none focus:border-indigo-400"
-                      />
-                      <span className="text-xs text-gray-400">%</span>
-                      <span className="text-gray-300 mx-0.5">/</span>
-                      <span className="text-xs text-gray-400">{selectedDivisions[1].name}:</span>
-                      <span className="w-14 text-xs text-center px-1 py-1.5 bg-gray-50 border border-gray-100 rounded-lg text-gray-500">
-                        {100 - s.fixedPctFirst}
-                      </span>
-                      <span className="text-xs text-gray-400">%</span>
+                  {s.ruleType === "fixed_split" && (
+                    <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                      {selectedDivisions.map((div, di) => {
+                        const isLast = di === selectedDivisions.length - 1;
+                        // Last division auto-calculates to make sum = 100
+                        const otherSum = selectedDivisions
+                          .filter((_, j) => j !== di)
+                          .reduce((sum, d) => sum + (s.fixedPctMap[d.id] ?? 0), 0);
+                        const autoVal = Math.max(0, 100 - otherSum);
+                        return (
+                          <div key={div.id} className="flex items-center gap-0.5">
+                            <span className="text-xs text-gray-400 whitespace-nowrap">{div.name}:</span>
+                            {isLast ? (
+                              <span className="w-12 text-xs text-center px-1 py-1.5 bg-gray-50 border border-gray-100 rounded-lg text-gray-500">
+                                {autoVal}
+                              </span>
+                            ) : (
+                              <input
+                                type="number" min={0} max={100}
+                                value={s.fixedPctMap[div.id] ?? 0}
+                                onChange={e => {
+                                  const val = Math.min(100, Math.max(0, Number(e.target.value)));
+                                  setSelectedAccounts(prev => prev.map(a =>
+                                    a.account.Id === s.account.Id
+                                      ? { ...a, fixedPctMap: { ...a.fixedPctMap, [div.id]: val } }
+                                      : a
+                                  ));
+                                }}
+                                className="w-12 text-xs text-center border border-gray-200 rounded-lg px-1 py-1.5 focus:outline-none focus:border-indigo-400"
+                              />
+                            )}
+                            <span className="text-xs text-gray-400">%</span>
+                            {di < selectedDivisions.length - 1 && <span className="text-gray-200 mx-0.5">/</span>}
+                          </div>
+                        );
+                      })}
+                      {/* Warn if doesn't sum to 100 */}
+                      {(() => {
+                        const allButLast = selectedDivisions.slice(0, -1).reduce((sum, d) => sum + (s.fixedPctMap[d.id] ?? 0), 0);
+                        return allButLast > 100 ? <span className="text-xs text-red-500 ml-1">exceeds 100%</span> : null;
+                      })()}
                     </div>
-                  )}
-                  {s.ruleType === "fixed_split" && selectedDivisions.length !== 2 && (
-                    <span className="text-xs text-gray-400 shrink-0">Equal split ({Math.round(100 / selectedDivisions.length)}% each)</span>
                   )}
                 </div>
               ))}

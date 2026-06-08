@@ -45,9 +45,11 @@ export function calculateAllocationLines(
       if (rule.rule_type === "revenue_pct") {
         pct = revenueSplit[div.id] ?? (100 / divisions.length);
       } else {
-        // Fixed split — use fixed_pct_division_a for first division, distribute rest equally
-        // TODO: when we add per-division fixed rules, update this
-        if (div.id === divisions[0]?.id) {
+        // Fixed split — use fixed_pct_map (N-division) first, fall back to fixed_pct_division_a (legacy 2-div)
+        const pctMap = (rule as AllocationRule & { fixed_pct_map?: Record<string, number> }).fixed_pct_map;
+        if (pctMap && pctMap[div.id] !== undefined) {
+          pct = pctMap[div.id];
+        } else if (div.id === divisions[0]?.id) {
           pct = rule.fixed_pct_division_a ?? (100 / divisions.length);
         } else if (divisions.length === 2 && div.id === divisions[1]?.id) {
           pct = 100 - (rule.fixed_pct_division_a ?? 50);
