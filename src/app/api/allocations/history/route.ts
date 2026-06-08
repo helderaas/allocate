@@ -11,8 +11,8 @@ export async function GET(req: NextRequest) {
 
   const db = getServiceSupabase();
 
-  // Force primary connection by doing a lightweight write check first
-  await db.rpc("now").catch(() => null);
+  // Force primary connection
+  try { await db.rpc("now"); } catch { /* ignore */ }
 
   const { data: allDrafts, error } = await db
     .from("allocation_drafts")
