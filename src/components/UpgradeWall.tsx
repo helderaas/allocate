@@ -35,7 +35,7 @@ export default function UpgradeWall() {
         </div>
         <h1 className="text-2xl font-semibold text-gray-900 mb-2">Subscribe to Allocate</h1>
         <p className="text-gray-500 text-sm mb-6">
-          Start allocating shared expenses automatically across your divisions.
+          Try Allocate free for 14 days — no charge until your trial ends.
         </p>
 
         <div className="bg-gray-50 rounded-xl p-4 mb-6 text-left space-y-2">
@@ -55,7 +55,7 @@ export default function UpgradeWall() {
 
         <div className="mb-6">
           <p className="text-3xl font-bold text-gray-900">$17<span className="text-base font-normal text-gray-500">/mo per company</span></p>
-          <p className="text-xs text-gray-400 mt-1">Volume discounts available for 6+ companies</p>
+          <p className="text-xs text-gray-400 mt-1">After 14-day free trial · Volume discounts for 6+ companies</p>
         </div>
 
         {error && (
@@ -68,11 +68,12 @@ export default function UpgradeWall() {
           className="w-full flex items-center justify-center gap-2 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-xl font-medium"
         >
           {loading ? <Loader2 size={18} className="animate-spin" /> : <Zap size={18} />}
-          {loading ? "Loading checkout..." : "Subscribe now"}
+          {loading ? "Loading checkout..." : "Start free trial"}
         </button>
 
-        <p className="text-xs text-gray-400 mt-3">Cancel anytime • Secure payment via Stripe</p>
+        <p className="text-xs text-gray-400 mt-3">14 days free • Cancel anytime • Secure payment via Stripe</p>
       </div>
     </div>
   );
 }
+
