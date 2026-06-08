@@ -126,6 +126,7 @@ export default function DashboardPage() {
   };
 
   const voidAllocation = async (draftId: string) => {
+    if (!draftId) { setError("Invalid allocation ID"); return; }
     setVoidingId(draftId);
     setError("");
     setQboReconnectRequired(false);
@@ -145,7 +146,7 @@ export default function DashboardPage() {
           setError(data.error || `Void failed (status ${res.status}). Check your QBO connection.`);
         }
       } else {
-        loadHistory();
+        setTimeout(() => loadHistory(), 500);
       }
     } catch (e) {
       setError("Network error — could not reach the server. Please try again.");
