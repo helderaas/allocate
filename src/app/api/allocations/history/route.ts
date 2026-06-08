@@ -9,16 +9,16 @@ export async function GET(req: NextRequest) {
 
   const db = getServiceSupabase();
 
-  const { data: allDrafts, error } = await db
+  const { data: allDrafts, error, status: sbStatus } = await db
     .from("allocation_drafts")
     .select("id, period, status, created_at, total_debits, total_credits, description, qbo_journal_entry_id, voided_at, locked_at")
     .eq("tenant_id", tenantId)
     .order("created_at", { ascending: false })
     .limit(200);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  console.log("History API — tenantId:", tenantId, "sb status:", sbStatus, "error:", error?.message, "rows:", allDrafts?.length);
 
-  console.log("History API — tenantId:", tenantId, "rows returned:", allDrafts?.length, "ids:", allDrafts?.map(d => d.id + ":" + d.status));
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   if (showAll) {
     const drafts = (allDrafts ?? []).sort((a, b) => b.period.localeCompare(a.period));
