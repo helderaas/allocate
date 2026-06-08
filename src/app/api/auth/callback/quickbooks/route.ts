@@ -80,15 +80,19 @@ export async function GET(req: NextRequest) {
 
     if (error) throw error;
 
+    // Check for completed setup using new divisions table OR legacy A/B columns
+    const { data: divisionsCheck } = await db
+      .from("divisions").select("id").eq("tenant_id", tenant.id).limit(1);
+
     const { data: rules } = await db
       .from("allocation_rules").select("id").eq("tenant_id", tenant.id).limit(1);
 
-    const isSetupComplete =
-      !!tenant.division_a_location_id &&
-      !!tenant.division_b_location_id &&
-      (rules?.length ?? 0) > 0;
+    const hasDivisions = (divisionsCheck?.length ?? 0) > 0 ||
+      (!!tenant.division_a_location_id && !!tenant.division_b_location_id);
+    const hasRules = (rules?.length ?? 0) > 0;
+    const isSetupComplete = hasDivisions && hasRules;
 
-    const redirectPath = isSetupComplete ? "/dashboard" : `/onboarding?tenantId=${tenant.id}`;
+    const redirectPath = isSetupComplete ? "/dashboard" : "/new-allocation";
 
     const response = NextResponse.redirect(new URL(redirectPath, req.url));
     response.cookies.set("tenant_id", tenant.id, {

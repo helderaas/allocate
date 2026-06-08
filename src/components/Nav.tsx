@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Settings, LogOut, ChevronDown, Building2, Plus, CreditCard } from "lucide-react";
+import { LogOut, ChevronDown, Building2, Plus, CreditCard } from "lucide-react";
 
 interface Company {
   id: string;
@@ -10,11 +10,7 @@ interface Company {
   division_b_location_name?: string;
 }
 
-interface NavProps {
-  showSettings?: boolean;
-}
-
-export default function Nav({ showSettings = true }: NavProps) {
+export default function Nav() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [currentTenantId, setCurrentTenantId] = useState<string>("");
   const [showSwitcher, setShowSwitcher] = useState(false);
@@ -148,12 +144,6 @@ export default function Nav({ showSettings = true }: NavProps) {
       </div>
 
       <div className="flex items-center gap-4">
-        {showSettings && (
-          <a href="/onboarding?returnTo=dashboard"
-            className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1">
-            <Settings size={14} /> Settings
-          </a>
-        )}
         {subscriptionStatus === "active" && (
           <button onClick={handleManageBilling}
             className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1">

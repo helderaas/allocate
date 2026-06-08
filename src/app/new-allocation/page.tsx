@@ -212,7 +212,12 @@ function NewAllocationContent() {
     : "Select a period";
 
   const stepOrder: Step[] = ["divisions", "accounts", "splits", "dates"];
-  const stepLabels: Record<Step, string> = { divisions: "Divisions", accounts: "Accounts", splits: "Rules", dates: "Dates" };
+  const stepLabels: Record<Step, string> = {
+    divisions: trackingType === "location" ? "Locations" : "Classes",
+    accounts: "Accounts",
+    splits: "Rules",
+    dates: "Dates",
+  };
   const currentStepIndex = stepOrder.indexOf(step);
   const canProceedDivisions = selectedDivisions.length >= 1 && selectedDivisions.every(d => d.name && (d.qbo_location_id || d.qbo_class_id || true));
 
@@ -251,8 +256,10 @@ function NewAllocationContent() {
           {templateId ? "New Allocation (from template)" : "New Allocation"}
         </h1>
         <p className="text-gray-500 mb-8 text-sm">
-          {step === "divisions" && "Choose how you track divisions and select them."}
-          {step === "accounts" && "Choose accounts whose expenses are split between divisions."}
+          {step === "divisions" && (trackingType === "location"
+            ? "Choose which locations or departments to allocate expenses across."
+            : "Choose which classes to allocate expenses across.")}
+          {step === "accounts" && "Choose accounts whose expenses are shared across your locations."}
           {step === "splits" && "Set an allocation rule for each account."}
           {step === "dates" && "Choose the period to allocate."}
         </p>
@@ -262,7 +269,7 @@ function NewAllocationContent() {
           <div className="bg-white rounded-2xl border border-gray-200 p-6">
             {/* Tracking type toggle */}
             <div className="mb-6">
-              <p className="text-sm font-medium text-gray-700 mb-2">My company tracks divisions by:</p>
+              <p className="text-sm font-medium text-gray-700 mb-2">My shared expenses are organized by:</p>
               <div className="flex gap-2">
                 <button
                   onClick={() => setTrackingType("location")}
@@ -288,7 +295,10 @@ function NewAllocationContent() {
             </div>
 
             <h2 className="font-medium text-gray-900 mb-3">
-              Select your divisions <span className="text-xs text-gray-400 font-normal">(minimum 1)</span>
+              {trackingType === "location"
+                ? "Select your locations / departments"
+                : "Select your classes"}{" "}
+              <span className="text-xs text-gray-400 font-normal">(minimum 1)</span>
             </h2>
 
             <div className="space-y-3 mb-4">
@@ -307,7 +317,7 @@ function NewAllocationContent() {
                     }}
                     className="flex-1 text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white"
                   >
-                    <option value="">Select {trackingType === "location" ? "location" : "class"}...</option>
+                    <option value="">Select {trackingType === "location" ? "location / department" : "class"}...</option>
                     {items.map(item => (
                       <option key={item.Id} value={item.Id}>{item.Name}</option>
                     ))}
@@ -332,7 +342,7 @@ function NewAllocationContent() {
               onClick={addDivision}
               className="flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-700 font-medium mb-6"
             >
-              <Plus size={14} /> Add another division
+              <Plus size={14} /> Add another {trackingType === "location" ? "location" : "class"}
             </button>
 
             <button
