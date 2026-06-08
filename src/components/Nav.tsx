@@ -30,7 +30,14 @@ export default function Nav({ showSettings = true }: NavProps) {
   const handleManageBilling = async () => {
     const res = await fetch("/api/stripe/portal", { method: "POST", credentials: "include" });
     const data = await res.json();
-    if (data.url) window.location.href = data.url;
+    if (data.url) {
+      window.location.href = data.url;
+    } else {
+      // No customer yet - go to checkout
+      const checkoutRes = await fetch("/api/stripe/checkout", { method: "POST", credentials: "include" });
+      const checkoutData = await checkoutRes.json();
+      if (checkoutData.url) window.location.href = checkoutData.url;
+    }
   };
 
   useEffect(() => {
@@ -161,4 +168,5 @@ export default function Nav({ showSettings = true }: NavProps) {
     </nav>
   );
 }
+
 
