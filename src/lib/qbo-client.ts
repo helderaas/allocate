@@ -337,21 +337,49 @@ export async function voidJournalEntry(
   journalEntryId: string
 ): Promise<void> {
   const base = `${QBO_BASE[env]}/v3/company/${realmId}`;
+
+  // QBO requires the current SyncToken to void — fetch it first
+  let currentToken = accessToken;
+  let syncToken = "0";
+  try {
+    const { data: jeData } = await axios.get(
+      `${base}/journalentry/${journalEntryId}`,
+      { headers: { Authorization: `Bearer ${currentToken}`, Accept: "application/json" } }
+    );
+    syncToken = jeData?.JournalEntry?.SyncToken ?? "0";
+  } catch (err: unknown) {
+    if (axios.isAxiosError(err) && err.response?.status === 401) {
+      const newTokens = await refreshQBOToken(tenantId, refreshToken);
+      currentToken = newTokens.access_token;
+      const { data: jeData } = await axios.get(
+        `${base}/journalentry/${journalEntryId}`,
+        { headers: { Authorization: `Bearer ${currentToken}`, Accept: "application/json" } }
+      );
+      syncToken = jeData?.JournalEntry?.SyncToken ?? "0";
+    } else {
+      console.error("Failed to fetch JE for void:", axios.isAxiosError(err) ? err.response?.data : err);
+      throw err;
+    }
+  }
+
+  // Now void with the correct SyncToken
   try {
     await axios.post(
       `${base}/journalentry?operation=void`,
-      { Id: journalEntryId, SyncToken: "0" },
-      { headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json", "Content-Type": "application/json" } }
+      { Id: journalEntryId, SyncToken: syncToken },
+      { headers: { Authorization: `Bearer ${currentToken}`, Accept: "application/json", "Content-Type": "application/json" } }
     );
   } catch (err: unknown) {
     if (axios.isAxiosError(err) && err.response?.status === 401) {
       const newTokens = await refreshQBOToken(tenantId, refreshToken);
       await axios.post(
         `${base}/journalentry?operation=void`,
-        { Id: journalEntryId, SyncToken: "0" },
+        { Id: journalEntryId, SyncToken: syncToken },
         { headers: { Authorization: `Bearer ${newTokens.access_token}`, Accept: "application/json", "Content-Type": "application/json" } }
       );
+      return;
     }
+    console.error("QBO void error:", axios.isAxiosError(err) ? JSON.stringify(err.response?.data) : err);
     throw err;
   }
 }
