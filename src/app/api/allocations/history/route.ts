@@ -11,10 +11,14 @@ export async function GET(req: NextRequest) {
 
   const db = getServiceSupabase();
 
+  // Force primary connection by doing a lightweight write check first
+  await db.rpc("now").catch(() => null);
+
   const { data: allDrafts, error } = await db
     .from("allocation_drafts")
     .select("id, period, status, created_at, total_debits, total_credits, description, qbo_journal_entry_id, voided_at, locked_at")
     .eq("tenant_id", tenantId)
+    .lte("created_at", new Date().toISOString()) // cache-bust: always true but forces fresh plan
     .order("created_at", { ascending: false })
     .limit(200);
 
