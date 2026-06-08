@@ -413,18 +413,27 @@ function NewAllocationContent() {
                   </select>
                   {s.ruleType === "fixed_split" && selectedDivisions.length === 2 && (
                     <div className="flex items-center gap-1 shrink-0">
+                      <span className="text-xs text-gray-400">{selectedDivisions[0].name}:</span>
                       <input
                         type="number" min={0} max={100} value={s.fixedPctFirst}
                         onChange={e => setSelectedAccounts(prev => prev.map(a =>
-                          a.account.Id === s.account.Id ? { ...a, fixedPctFirst: Number(e.target.value) } : a
+                          a.account.Id === s.account.Id
+                            ? { ...a, fixedPctFirst: Math.min(100, Math.max(0, Number(e.target.value))) }
+                            : a
                         ))}
-                        className="w-14 text-xs text-center border border-gray-200 rounded-lg px-1 py-1.5"
+                        className="w-14 text-xs text-center border border-gray-200 rounded-lg px-1 py-1.5 focus:outline-none focus:border-indigo-400"
                       />
-                      <span className="text-xs text-gray-400">/ {100 - s.fixedPctFirst}%</span>
+                      <span className="text-xs text-gray-400">%</span>
+                      <span className="text-gray-300 mx-0.5">/</span>
+                      <span className="text-xs text-gray-400">{selectedDivisions[1].name}:</span>
+                      <span className="w-14 text-xs text-center px-1 py-1.5 bg-gray-50 border border-gray-100 rounded-lg text-gray-500">
+                        {100 - s.fixedPctFirst}
+                      </span>
+                      <span className="text-xs text-gray-400">%</span>
                     </div>
                   )}
                   {s.ruleType === "fixed_split" && selectedDivisions.length !== 2 && (
-                    <span className="text-xs text-gray-400 shrink-0">Equal split</span>
+                    <span className="text-xs text-gray-400 shrink-0">Equal split ({Math.round(100 / selectedDivisions.length)}% each)</span>
                   )}
                 </div>
               ))}
