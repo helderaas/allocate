@@ -54,23 +54,17 @@ export default function DashboardPage() {
   const [voidingId, setVoidingId] = useState<string | null>(null);
   const [showVoidConfirm, setShowVoidConfirm] = useState<string | null>(null);
 
-  const loadHistory = useCallback(async (retryCount = 0) => {
+  const loadHistory = useCallback(async () => {
     try {
       const res = await fetch("/api/allocations/history?t=" + Date.now(), { cache: "no-store" });
       const data = await res.json();
       if (res.ok) {
-        setAllHistory([...(data.drafts ?? [])]);
-        // Retry up to 10 times with 3 second gaps to handle replica lag
-        if (data.drafts?.length === 0 && retryCount < 10) {
-          setTimeout(() => loadHistory(retryCount + 1), 3000);
-        }
+        setAllHistory(data.drafts ?? []);
       } else {
         console.error("History API error:", data);
-        setError("Failed to load history: " + (data.error ?? res.status));
       }
     } catch (e) { console.error("History fetch error:", e); }
-    setHistoryLoading(false);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    finally { setHistoryLoading(false); }
   }, []);
 
   const loadTemplates = useCallback(async () => {
