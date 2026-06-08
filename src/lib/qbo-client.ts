@@ -187,7 +187,9 @@ export async function fetchGLBalances(
         ...divisions.map(div => {
           const filterId = trackingType === "class" ? div.qbo_class_id : div.qbo_location_id;
           if (!filterId) return Promise.resolve({ Rows: { Row: [] } });
-          const filterParam = trackingType === "class" ? { class: filterId } : { department: filterId };
+          const filterParam: Record<string, string> = trackingType === "class" 
+            ? { class: filterId } 
+            : { department: filterId };
           return qboRequest<{ Rows: { Row: GLRow[] } }>(
             tenantId, realmId, accessToken, refreshToken,
             "/reports/GeneralLedger",
@@ -335,6 +337,7 @@ export async function voidJournalEntry(
     throw err;
   }
 }
+
 
 
 
