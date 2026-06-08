@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Nav from "@/components/Nav";
+import UpgradeWall from "@/components/UpgradeWall";
 import {
   Calendar, CheckCircle, Clock,
   Loader2, Plus, ChevronRight, BookOpen, Trash2, Play, X, XCircle, History,
@@ -37,6 +38,14 @@ export default function DashboardPage() {
   const [historyLoading, setHistoryLoading] = useState(true);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [templatesLoading, setTemplatesLoading] = useState(true);
+
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>("loading");
+
+  useEffect(() => {
+    fetch("/api/stripe/subscription", { credentials: "include" })
+      .then(r => r.json())
+      .then(d => setSubscriptionStatus(d.subscription?.subscription_status ?? "inactive"));
+  }, []);
 
   const [showLaunchModal, setShowLaunchModal] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("fresh");
@@ -124,6 +133,12 @@ export default function DashboardPage() {
 
   const periodLabel = (period: string) =>
     new Date(period + "-02").toLocaleString("default", { month: "long", year: "numeric" });
+
+  // Show upgrade wall for inactive/canceled subscriptions
+  // During development, comment out this block to bypass subscription check
+  if (subscriptionStatus !== "loading" && subscriptionStatus !== "active") {
+    return <UpgradeWall />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -368,5 +383,6 @@ export default function DashboardPage() {
     </div>
   );
 }
-// v9
+// v10
+
 
