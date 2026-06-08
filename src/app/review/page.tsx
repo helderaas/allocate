@@ -7,11 +7,32 @@ import {
   ChevronDown, ChevronUp, BookmarkPlus, X, Lock, AlertCircle,
 } from "lucide-react";
 
+interface Division {
+  id: string;
+  name: string;
+  qbo_location_id?: string | null;
+  qbo_class_id?: string | null;
+}
+
+// N-division line: division_amounts is a map of divisionId -> editable amount
 interface EditableLine extends AllocationLine {
-  division_a_description: string;
-  division_b_description: string;
-  division_a_amount_edited: number;
-  division_b_amount_edited: number;
+  description: string;
+  division_amounts_edited: Record<string, number>;
+  // division_amounts from engine (original calculated values)
+  division_amounts?: Record<string, number>;
+}
+
+const DIVISION_COLORS = [
+  "text-indigo-600",
+  "text-teal-600",
+  "text-violet-600",
+  "text-orange-600",
+  "text-pink-600",
+  "text-sky-600",
+];
+
+function fmt(n: number) {
+  return "$" + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function ReviewContent() {
@@ -22,6 +43,7 @@ function ReviewContent() {
 
   const [draft, setDraft] = useState<AllocationDraft | null>(null);
   const [lines, setLines] = useState<EditableLine[]>([]);
+  const [divisions, setDivisions] = useState<Division[]>([]);
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
   const [posted, setPosted] = useState(false);
@@ -34,11 +56,9 @@ function ReviewContent() {
   const [amendNote, setAmendNote] = useState("");
   const [showAmendNote, setShowAmendNote] = useState(false);
 
-  // Derived: is this entry locked?
   const isLocked = !!(draft?.locked_at);
   const isPosted = draft?.status === "posted";
 
-  // Save-as-template state
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [templateName, setTemplateName] = useState("");
   const [savingTemplate, setSavingTemplate] = useState(false);
@@ -51,52 +71,79 @@ function ReviewContent() {
       setLoading(true);
       setDraft(null);
       setLines([]);
-      const res = await fetch("/api/allocations/draft", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ period }),
-      });
-      const data = await res.json();
-      if (data.draft) {
-        setDraft(data.draft);
-        setJeDate(data.draft.je_date || "");
-        setDefaultDescription(data.draft.description || "");
-        setJournalNumber(data.draft.journal_number || "");
-        const rawLines: AllocationLine[] = typeof data.draft.lines === "string"
-          ? JSON.parse(data.draft.lines)
-          : data.draft.lines;
-        setLines(rawLines.map(l => ({
-          ...l,
-          division_a_description: data.draft.description || "",
-          division_b_description: data.draft.description || "",
-          division_a_amount_edited: l.division_a_amount,
-          division_b_amount_edited: l.division_b_amount,
-        })));
+
+      const [draftRes, divsRes] = await Promise.all([
+        fetch("/api/allocations/draft", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ period }),
+        }),
+        fetch("/api/divisions", { cache: "no-store" }),
+      ]);
+
+      const draftData = await draftRes.json();
+      const { divisions: divRows } = await divsRes.json();
+      const divList: Division[] = divRows ?? [];
+      setDivisions(divList);
+
+      if (draftData.draft) {
+        setDraft(draftData.draft);
+        setJeDate(draftData.draft.je_date || "");
+        setDefaultDescription(draftData.draft.description || "");
+        setJournalNumber(draftData.draft.journal_number || "");
+
+        const rawLines: (AllocationLine & { division_amounts?: Record<string, number> })[] =
+          typeof draftData.draft.lines === "string"
+            ? JSON.parse(draftData.draft.lines)
+            : draftData.draft.lines;
+
+        setLines(rawLines.map(l => {
+          // Build editable amounts map from N-division data or fall back to legacy 2-div fields
+          const baseAmounts: Record<string, number> = l.division_amounts
+            ? { ...l.division_amounts }
+            : {
+                [divList[0]?.id ?? "div-a"]: l.division_a_amount,
+                [divList[1]?.id ?? "div-b"]: l.division_b_amount,
+              };
+          return {
+            ...l,
+            description: draftData.draft.description || "",
+            division_amounts_edited: baseAmounts,
+          };
+        }));
       }
       setLoading(false);
     }
     load();
   }, [period, t]);
 
-  const updateLine = (index: number, field: keyof EditableLine, value: string | number) => {
-    setLines(prev => prev.map((l, i) => i === index ? { ...l, [field]: value } : l));
+  const updateAmount = (lineIndex: number, divisionId: string, value: number) => {
+    setLines(prev => prev.map((l, i) =>
+      i === lineIndex
+        ? { ...l, division_amounts_edited: { ...l.division_amounts_edited, [divisionId]: value } }
+        : l
+    ));
+  };
+
+  const updateDescription = (lineIndex: number, value: string) => {
+    setLines(prev => prev.map((l, i) => i === lineIndex ? { ...l, description: value } : l));
   };
 
   const applyDescriptionToAll = () => {
-    setLines(prev => prev.map(l => ({
-      ...l,
-      division_a_description: defaultDescription,
-      division_b_description: defaultDescription,
-    })));
+    setLines(prev => prev.map(l => ({ ...l, description: defaultDescription })));
   };
 
   const toggleLine = (index: number) => {
     setExpandedLines(prev => ({ ...prev, [index]: !prev[index] }));
   };
 
-  const totalDebits = lines.reduce((sum, l) => sum + (l.division_a_amount_edited || 0) + (l.division_b_amount_edited || 0), 0);
-  const totalCredits = lines.reduce((sum, l) => sum + (l.division_a_amount_edited || 0) + (l.division_b_amount_edited || 0), 0);
-  const isBalanced = Math.abs(totalDebits - totalCredits) < 0.01;
+  // Totals: sum all division debit amounts per line
+  const lineTotal = (l: EditableLine) =>
+    Object.values(l.division_amounts_edited).reduce((s, v) => s + (v || 0), 0);
+
+  const totalDebits = lines.reduce((sum, l) => sum + lineTotal(l), 0);
+  const totalCredits = totalDebits; // credits always equal debits (offset line)
+  const isBalanced = true; // credit line = sum of debits, always balanced
 
   const handleReject = () => {
     router.push("/new-allocation");
@@ -104,17 +151,16 @@ function ReviewContent() {
 
   const approve = async () => {
     if (!draft) return;
-    if (!isBalanced) {
-      setError("Journal entry is not balanced. Total debits must equal total credits.");
-      return;
-    }
     setPosting(true);
     setError("");
 
+    // Merge edited amounts back into lines for the API
     const updatedLines = lines.map(l => ({
       ...l,
-      division_a_amount: l.division_a_amount_edited,
-      division_b_amount: l.division_b_amount_edited,
+      division_amounts: l.division_amounts_edited,
+      // Keep legacy fields in sync for backwards compat
+      division_a_amount: Object.values(l.division_amounts_edited)[0] ?? l.division_a_amount,
+      division_b_amount: Object.values(l.division_amounts_edited)[1] ?? l.division_b_amount,
     }));
 
     const res = await fetch("/api/allocations/approve", {
@@ -143,11 +189,8 @@ function ReviewContent() {
     if (!templateName.trim()) { setSaveTemplateError("Please enter a name."); return; }
     setSavingTemplate(true);
     setSaveTemplateError("");
-
-    // Pull current active config rules to save
     const configRes = await fetch("/api/onboarding/config", { cache: "no-store" });
     const { rules } = await configRes.json();
-
     const res = await fetch("/api/allocations/templates", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -196,6 +239,13 @@ function ReviewContent() {
     <div className="min-h-screen flex items-center justify-center text-gray-500">Draft not found.</div>
   );
 
+  const periodLabel = period
+    ? new Date(period + "-02").toLocaleString("default", { month: "long", year: "numeric" })
+    : period;
+
+  // JE lines count: each account = N debit lines + 1 credit line
+  const totalJELines = lines.length * (divisions.length + 1);
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-4xl mx-auto py-10 px-4">
@@ -206,13 +256,12 @@ function ReviewContent() {
           <ArrowLeft size={16} /> Back to dashboard
         </button>
 
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
           <div>
             <h1 className="text-2xl font-semibold text-gray-900">Review allocation</h1>
-            <p className="text-gray-500 text-sm mt-0.5">Period: {period}</p>
+            <p className="text-gray-500 text-sm mt-0.5">{periodLabel}</p>
           </div>
           <div className="flex gap-3 flex-wrap justify-end">
-            {/* Save configuration */}
             <button
               onClick={() => { setShowSaveModal(true); setSaveTemplateError(""); setTemplateName(""); }}
               className="flex items-center gap-2 px-4 py-2.5 border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 rounded-xl text-sm font-medium text-indigo-700"
@@ -227,7 +276,7 @@ function ReviewContent() {
             </button>
             <button
               onClick={approve}
-              disabled={posting || !isBalanced || isLocked}
+              disabled={posting || isLocked}
               className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-xl font-medium text-sm"
               title={isLocked ? "Unlock this entry from the History page to make changes" : ""}
             >
@@ -247,7 +296,6 @@ function ReviewContent() {
                   <X size={18} />
                 </button>
               </div>
-
               {templateSaved ? (
                 <div className="flex flex-col items-center py-4 gap-3 text-green-600">
                   <CheckCircle size={32} />
@@ -267,9 +315,7 @@ function ReviewContent() {
                     className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 mb-3 focus:outline-none focus:border-indigo-400"
                     autoFocus
                   />
-                  {saveTemplateError && (
-                    <p className="text-xs text-red-500 mb-3">{saveTemplateError}</p>
-                  )}
+                  {saveTemplateError && <p className="text-xs text-red-500 mb-3">{saveTemplateError}</p>}
                   <button
                     onClick={saveAsTemplate}
                     disabled={savingTemplate}
@@ -288,11 +334,11 @@ function ReviewContent() {
         {isLocked && (
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 flex items-center gap-3 text-amber-700 text-sm">
             <Lock size={16} className="shrink-0" />
-            <span>This allocation is <strong>locked</strong>. To make changes, unlock it from the History page first. You can still void it.</span>
+            <span>This allocation is <strong>locked</strong>. To make changes, unlock it from the History page first.</span>
           </div>
         )}
 
-        {/* Amend note prompt — shown when editing a posted entry */}
+        {/* Amend note */}
         {isPosted && !isLocked && (
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 text-blue-700 text-sm">
             <div className="flex items-center gap-2 mb-2">
@@ -314,72 +360,56 @@ function ReviewContent() {
           <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 text-red-700 text-sm">{error}</div>
         )}
 
+        {/* JE details */}
         <div className="bg-white rounded-2xl border border-gray-200 p-5 mb-6">
           <h2 className="text-sm font-medium text-gray-700 mb-4">Journal entry details</h2>
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
               <label className="block text-xs text-gray-500 mb-1">Journal entry date</label>
-              <input
-                type="date" value={jeDate}
-                onChange={e => setJeDate(e.target.value)}
-                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2"
-              />
+              <input type="date" value={jeDate} onChange={e => setJeDate(e.target.value)}
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2" />
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1">Journal number (optional)</label>
-              <input
-                type="text" value={journalNumber}
-                onChange={e => setJournalNumber(e.target.value)}
+              <input type="text" value={journalNumber} onChange={e => setJournalNumber(e.target.value)}
                 placeholder="e.g. JE-2026-05"
-                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2"
-              />
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2" />
             </div>
           </div>
           <div>
             <div className="flex items-center justify-between mb-1">
               <label className="block text-xs text-gray-500">Default description (applies to all lines)</label>
-              <button
-                onClick={applyDescriptionToAll}
-                className="text-xs text-indigo-600 hover:text-indigo-700 font-medium"
-              >
+              <button onClick={applyDescriptionToAll}
+                className="text-xs text-indigo-600 hover:text-indigo-700 font-medium">
                 Apply to all lines
               </button>
             </div>
-            <input
-              type="text" value={defaultDescription}
+            <input type="text" value={defaultDescription}
               onChange={e => setDefaultDescription(e.target.value)}
               placeholder="e.g. May 2026 Division Allocation"
-              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2"
-            />
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2" />
           </div>
         </div>
 
+        {/* Summary stats */}
         <div className="grid grid-cols-3 gap-4 mb-6">
           <div className="bg-white rounded-xl border border-gray-200 p-4">
-            <p className="text-xs text-gray-500 mb-1">Total lines</p>
-            <p className="text-2xl font-semibold text-gray-900">{lines.length * 2}</p>
+            <p className="text-xs text-gray-500 mb-1">JE lines</p>
+            <p className="text-2xl font-semibold text-gray-900">{totalJELines}</p>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 p-4">
             <p className="text-xs text-gray-500 mb-1">Total debits</p>
-            <p className={"text-2xl font-semibold " + (isBalanced ? "text-green-600" : "text-red-500")}>
-              {"$" + totalDebits.toLocaleString()}
-            </p>
+            <p className="text-2xl font-semibold text-green-600">{fmt(totalDebits)}</p>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 p-4">
             <p className="text-xs text-gray-500 mb-1">Total credits</p>
-            <p className={"text-2xl font-semibold " + (isBalanced ? "text-red-500" : "text-orange-500")}>
-              {"$" + totalCredits.toLocaleString()}
-            </p>
+            <p className="text-2xl font-semibold text-red-500">{fmt(totalCredits)}</p>
           </div>
         </div>
 
-        {!isBalanced && (
-          <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 mb-6 text-orange-700 text-sm">
-            Warning: Journal entry is out of balance by {"$" + Math.abs(totalDebits - totalCredits).toFixed(2)}. Adjust line amounts before posting.
-          </div>
-        )}
-
+        {/* Lines table */}
         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+          {/* Header */}
           <div className="grid grid-cols-12 gap-2 px-4 py-3 border-b border-gray-100 text-xs font-medium text-gray-400 uppercase tracking-wide">
             <span className="col-span-3">Account</span>
             <span className="col-span-2">Location</span>
@@ -389,112 +419,122 @@ function ReviewContent() {
             <span className="col-span-1"></span>
           </div>
 
-          {lines.map((line, i) => (
-            <div key={i} className="border-b border-gray-100 last:border-0">
-              {/* Row 1: Debit Division A */}
-              <div className="grid grid-cols-12 gap-2 px-4 py-2.5 items-center hover:bg-gray-50">
-                <span className="col-span-3 text-sm font-medium text-gray-900 truncate">{line.account_name}</span>
-                <span className="col-span-2 text-sm text-blue-600">Division A</span>
-                <div className="col-span-4">
-                  <input
-                    type="text"
-                    value={line.division_a_description}
-                    onChange={e => updateLine(i, "division_a_description", e.target.value)}
-                    className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-indigo-400"
-                    placeholder="Line description..."
-                  />
-                </div>
-                <div className="col-span-1">
-                  <input
-                    type="number"
-                    value={line.division_a_amount_edited}
-                    onChange={e => updateLine(i, "division_a_amount_edited", parseFloat(e.target.value) || 0)}
-                    className="w-full text-xs text-right border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-indigo-400 text-green-600"
-                  />
-                </div>
-                <span className="col-span-1 text-sm text-right text-gray-400"></span>
-                <button
-                  onClick={() => toggleLine(i)}
-                  className="col-span-1 flex justify-end text-gray-300 hover:text-gray-500"
-                >
-                  {expandedLines[i] ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                </button>
-              </div>
+          {lines.map((line, i) => {
+            const creditAmount = lineTotal(line);
+            return (
+              <div key={i} className="border-b border-gray-100 last:border-0">
 
-              {/* Row 2: Debit Division B */}
-              <div className="grid grid-cols-12 gap-2 px-4 py-2.5 items-center hover:bg-gray-50 bg-gray-50/50">
-                <span className="col-span-3 text-sm font-medium text-gray-900 truncate">{line.account_name}</span>
-                <span className="col-span-2 text-sm text-teal-600">Division B</span>
-                <div className="col-span-4">
-                  <input
-                    type="text"
-                    value={line.division_b_description}
-                    onChange={e => updateLine(i, "division_b_description", e.target.value)}
-                    className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-indigo-400"
-                    placeholder="Line description..."
-                  />
-                </div>
-                <div className="col-span-1">
-                  <input
-                    type="number"
-                    value={line.division_b_amount_edited}
-                    onChange={e => updateLine(i, "division_b_amount_edited", parseFloat(e.target.value) || 0)}
-                    className="w-full text-xs text-right border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-indigo-400 text-green-600"
-                  />
-                </div>
-                <span className="col-span-1 text-sm text-right text-gray-400"></span>
-                <span className="col-span-1"></span>
-              </div>
+                {/* One debit row per division */}
+                {divisions.map((div, di) => {
+                  const amount = line.division_amounts_edited[div.id] ?? 0;
+                  const colorClass = DIVISION_COLORS[di % DIVISION_COLORS.length];
+                  return (
+                    <div key={div.id} className={`grid grid-cols-12 gap-2 px-4 py-2.5 items-center hover:bg-gray-50 ${di % 2 === 1 ? "bg-gray-50/40" : ""}`}>
+                      <span className="col-span-3 text-sm font-medium text-gray-900 truncate">
+                        {di === 0 ? line.account_name : ""}
+                      </span>
+                      <span className={`col-span-2 text-sm font-medium ${colorClass} truncate`}>{div.name}</span>
+                      <div className="col-span-4">
+                        {di === 0 && (
+                          <input
+                            type="text"
+                            value={line.description}
+                            onChange={e => updateDescription(i, e.target.value)}
+                            className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-indigo-400"
+                            placeholder="Line description..."
+                          />
+                        )}
+                      </div>
+                      <div className="col-span-1">
+                        <input
+                          type="number"
+                          value={amount}
+                          onChange={e => updateAmount(i, div.id, parseFloat(e.target.value) || 0)}
+                          className="w-full text-xs text-right border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-indigo-400 text-green-600"
+                        />
+                      </div>
+                      <span className="col-span-1 text-sm text-right text-gray-300">—</span>
+                      {di === 0 ? (
+                        <button
+                          onClick={() => toggleLine(i)}
+                          className="col-span-1 flex justify-end text-gray-300 hover:text-gray-500"
+                        >
+                          {expandedLines[i] ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                        </button>
+                      ) : (
+                        <span className="col-span-1" />
+                      )}
+                    </div>
+                  );
+                })}
 
-              {/* Row 3: Credit untagged (no location) — read-only, auto-calculated */}
-              <div className="grid grid-cols-12 gap-2 px-4 py-2.5 items-center bg-gray-100/60">
-                <span className="col-span-3 text-sm font-medium text-gray-900 truncate">{line.account_name}</span>
-                <span className="col-span-2 text-xs text-gray-400 italic">Untagged offset</span>
-                <div className="col-span-4">
-                  <input
-                    type="text"
-                    value={line.division_a_description}
-                    onChange={e => updateLine(i, "division_a_description", e.target.value)}
-                    className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-indigo-400"
-                    placeholder="Line description..."
-                  />
-                </div>
-                <span className="col-span-1 text-sm text-right text-gray-400"></span>
-                <span className="col-span-1 text-xs text-right text-red-500 font-medium pr-1">
-                  {(line.division_a_amount_edited + line.division_b_amount_edited).toFixed(2)}
-                </span>
-                <span className="col-span-1"></span>
-              </div>
-
-              {expandedLines[i] && (
-                <div className="px-4 py-3 bg-indigo-50 border-t border-indigo-100 space-y-2">
-                  <div className="flex gap-6 text-xs text-indigo-700">
-                    <span>Rule: {line.rule_type === "revenue_pct" ? "Revenue %" : "Fixed split"}</span>
-                    <span>Div A: {line.division_a_pct.toFixed(1)}%</span>
-                    <span>Div B: {line.division_b_pct.toFixed(1)}%</span>
+                {/* Credit row — untagged offset, no location */}
+                <div className="grid grid-cols-12 gap-2 px-4 py-2.5 items-center bg-gray-100/60">
+                  <span className="col-span-3 text-sm font-medium text-gray-900 truncate">{line.account_name}</span>
+                  <span className="col-span-2 text-xs text-gray-400 italic">Untagged offset</span>
+                  <div className="col-span-4">
+                    <span className="text-xs text-gray-400">{line.description}</span>
                   </div>
-                  <div className="grid grid-cols-3 gap-3 pt-1">
-                    <div className="bg-white rounded-lg px-3 py-2 border border-indigo-100">
-                      <p className="text-xs text-gray-400 mb-0.5">Total balance</p>
-                      <p className="text-sm font-semibold text-gray-900">${(line.total_amount ?? 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                  <span className="col-span-1 text-sm text-right text-gray-300">—</span>
+                  <span className="col-span-1 text-xs text-right text-red-500 font-medium pr-1">
+                    {creditAmount.toFixed(2)}
+                  </span>
+                  <span className="col-span-1" />
+                </div>
+
+                {/* Expanded breakdown */}
+                {expandedLines[i] && (
+                  <div className="px-4 py-3 bg-indigo-50 border-t border-indigo-100 space-y-2">
+                    <div className="flex gap-4 flex-wrap text-xs text-indigo-700 mb-2">
+                      <span>Rule: {line.rule_type === "revenue_pct" ? "Revenue %" : "Fixed split"}</span>
+                      {divisions.map((div, di) => {
+                        const pct = line.rule_type === "revenue_pct"
+                          ? (di === 0 ? line.division_a_pct : line.division_b_pct)
+                          : null;
+                        return (
+                          <span key={div.id}>
+                            {div.name}: {pct !== null ? pct.toFixed(1) + "%" : fmt(line.division_amounts_edited[div.id] ?? 0)}
+                          </span>
+                        );
+                      })}
                     </div>
-                    <div className="bg-white rounded-lg px-3 py-2 border border-indigo-100">
-                      <p className="text-xs text-gray-400 mb-0.5">Already tagged</p>
-                      <p className="text-sm font-semibold text-green-600">
-                        A: ${(line.already_tagged_a ?? 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} /
-                        B: ${(line.already_tagged_b ?? 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                      </p>
-                    </div>
-                    <div className="bg-white rounded-lg px-3 py-2 border border-indigo-100">
-                      <p className="text-xs text-gray-400 mb-0.5">Being allocated</p>
-                      <p className="text-sm font-semibold text-indigo-600">${(line.untagged_amount ?? 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="bg-white rounded-lg px-3 py-2 border border-indigo-100">
+                        <p className="text-xs text-gray-400 mb-0.5">Total GL balance</p>
+                        <p className="text-sm font-semibold text-gray-900">{fmt(line.total_amount ?? 0)}</p>
+                      </div>
+                      <div className="bg-white rounded-lg px-3 py-2 border border-indigo-100 col-span-2">
+                        <p className="text-xs text-gray-400 mb-1">Already tagged (not reallocated)</p>
+                        <div className="flex gap-3 flex-wrap">
+                          {divisions.map((div, di) => {
+                            const tagged = di === 0
+                              ? (line.already_tagged_a ?? 0)
+                              : di === 1
+                                ? (line.already_tagged_b ?? 0)
+                                : 0;
+                            const colorClass = DIVISION_COLORS[di % DIVISION_COLORS.length];
+                            return (
+                              <span key={div.id} className={`text-xs font-medium ${colorClass}`}>
+                                {div.name}: {fmt(tagged)}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <div className="bg-white rounded-lg px-3 py-2 border border-indigo-100 col-span-3">
+                        <p className="text-xs text-gray-400 mb-0.5">Being allocated (untagged)</p>
+                        <p className="text-sm font-semibold text-indigo-600">{fmt(line.untagged_amount ?? 0)}</p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
-            </div>
-          ))}
+                )}
+              </div>
+            );
+          })}
         </div>
+
+        {/* Spacing at bottom */}
+        <div className="h-12" />
       </div>
     </div>
   );
@@ -517,7 +557,4 @@ export default function ReviewPage() {
     </Suspense>
   );
 }
-// v11
-
-
-
+// v12
