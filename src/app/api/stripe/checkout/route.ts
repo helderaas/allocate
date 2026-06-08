@@ -52,8 +52,10 @@ export async function POST(req: NextRequest) {
     metadata: { firm_id: firmId },
     subscription_data: {
       metadata: { firm_id: firmId },
+      trial_period_days: 14,
     },
   });
 
   return NextResponse.json({ url: session.url });
 }
+
