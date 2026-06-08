@@ -134,9 +134,17 @@ export default function DashboardPage() {
   const periodLabel = (period: string) =>
     new Date(period + "-02").toLocaleString("default", { month: "long", year: "numeric" });
 
+  // Show loading spinner while checking subscription
+  if (subscriptionStatus === "loading") {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+      </div>
+    );
+  }
+
   // Show upgrade wall for inactive/canceled subscriptions
-  // During development, comment out this block to bypass subscription check
-  if (subscriptionStatus !== "loading" && subscriptionStatus !== "active") {
+  if (subscriptionStatus !== "active") {
     return <UpgradeWall />;
   }
 
@@ -383,6 +391,7 @@ export default function DashboardPage() {
     </div>
   );
 }
-// v10
+// v11
+
 
 
