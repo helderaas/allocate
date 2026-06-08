@@ -14,6 +14,7 @@ export function getServiceSupabase() {
       headers: {
         "Cache-Control": "no-cache, no-store, must-revalidate",
         "Pragma": "no-cache",
+        "Prefer": "no-cache",
       }
     },
     auth: { persistSession: false }
