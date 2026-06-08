@@ -29,7 +29,7 @@ export default async function LandingPage() {
       {/* Hero */}
       <section className="max-w-6xl mx-auto px-6 pt-20 pb-16 text-center">
         <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-full text-xs font-medium mb-6">
-          ✦ Built for multi-division medical &amp; professional practices
+          ✦ Built for multi-division, multi-location companies
         </div>
         <h1 className="text-5xl font-bold text-gray-900 leading-tight mb-6 max-w-3xl mx-auto">
           Stop manually splitting shared expenses across divisions
@@ -235,3 +235,4 @@ export default async function LandingPage() {
     </div>
   );
 }
+
