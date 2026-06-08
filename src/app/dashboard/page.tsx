@@ -59,13 +59,14 @@ export default function DashboardPage() {
       const res = await fetch("/api/allocations/history?t=" + Date.now(), { cache: "no-store" });
       const data = await res.json();
       if (res.ok) {
-        setAllHistory(data.drafts ?? []);
+        setAllHistory([...( data.drafts ?? [])]);
       } else {
         console.error("History API error:", data);
         setError("Failed to load history: " + (data.error ?? res.status));
       }
     } catch (e) { console.error("History fetch error:", e); }
     setHistoryLoading(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadTemplates = useCallback(async () => {

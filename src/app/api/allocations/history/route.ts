@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServiceSupabase } from "@/lib/supabase";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: NextRequest) {
   const tenantId = req.cookies.get("tenant_id")?.value;
   if (!tenantId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
