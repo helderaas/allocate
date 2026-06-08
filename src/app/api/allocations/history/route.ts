@@ -27,21 +27,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ drafts }, { headers: { "Cache-Control": "no-store" } });
   }
 
-  // Dashboard — deduplicate by period, best status wins
-  const statusPriority: Record<string, number> = { voided: 3, posted: 2, draft: 1 };
-  const byPeriod = new Map<string, typeof allDrafts[0]>();
-
-  for (const draft of (allDrafts ?? [])) {
-    const existing = byPeriod.get(draft.period);
-    const newPriority = statusPriority[draft.status] ?? 0;
-    const existingPriority = existing ? (statusPriority[existing.status] ?? 0) : -1;
-    if (!existing || newPriority > existingPriority) {
-      byPeriod.set(draft.period, draft);
-    }
-  }
-
-  const drafts = Array.from(byPeriod.values())
-    .sort((a, b) => b.period.localeCompare(a.period));
-
+  const drafts = (allDrafts ?? []).sort((a, b) => b.period.localeCompare(a.period));
   return NextResponse.json({ drafts }, { headers: { "Cache-Control": "no-store" } });
 }
