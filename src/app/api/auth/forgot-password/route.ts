@@ -6,27 +6,18 @@ export async function POST(req: NextRequest) {
   if (!email) return NextResponse.json({ error: "Email required" }, { status: 400 });
 
   const db = getServiceSupabase();
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://allocate-blond.vercel.app";
 
-  // Generate a recovery link using admin API (no PKCE - uses token_hash flow)
-  const { data, error } = await db.auth.admin.generateLink({
-    type: "recovery",
-    email,
-    options: {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://allocate-blond.vercel.app"}/auth/callback`,
-    },
+  // Use resetPasswordForEmail with service role — this sends the email
+  // AND we override the redirect to our callback
+  const { error } = await db.auth.resetPasswordForEmail(email, {
+    redirectTo: `${siteUrl}/auth/callback`,
   });
 
-  if (error || !data) {
-    console.error("generateLink error:", error?.message);
-    // Return ok anyway to not reveal if email exists
-    return NextResponse.json({ ok: true });
+  if (error) {
+    console.error("Password reset error:", error.message);
   }
 
-  // Send email with the hashed token link (not PKCE)
-  const resetLink = data.properties?.action_link;
-  console.log("Reset link:", resetLink);
-
-  // Use Supabase's built-in email to send the link
-  // The admin.generateLink also triggers the email automatically
+  // Always return ok (don't reveal if email exists)
   return NextResponse.json({ ok: true });
 }
