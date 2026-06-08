@@ -54,12 +54,16 @@ export default function DashboardPage() {
   const [voidingId, setVoidingId] = useState<string | null>(null);
   const [showVoidConfirm, setShowVoidConfirm] = useState<string | null>(null);
 
-  const loadHistory = useCallback(async () => {
+  const loadHistory = useCallback(async (retryCount = 0) => {
     try {
       const res = await fetch("/api/allocations/history?t=" + Date.now(), { cache: "no-store" });
       const data = await res.json();
       if (res.ok) {
-        setAllHistory([...( data.drafts ?? [])]);
+        setAllHistory([...(data.drafts ?? [])]);
+        // If empty but we might have just posted, retry up to 3 times
+        if (data.drafts?.length === 0 && retryCount < 3) {
+          setTimeout(() => loadHistory(retryCount + 1), 2000);
+        }
       } else {
         console.error("History API error:", data);
         setError("Failed to load history: " + (data.error ?? res.status));
@@ -83,6 +87,19 @@ export default function DashboardPage() {
   useEffect(() => {
     loadHistory();
     loadTemplates();
+
+    // Re-fetch when tab becomes visible (handles returning from review page)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        // Small delay to allow replica to catch up
+        setTimeout(() => {
+          loadHistory();
+          loadTemplates();
+        }, 1500);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, [loadHistory, loadTemplates]);
 
   // Split history into drafts and posted/voided
