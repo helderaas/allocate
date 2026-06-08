@@ -1,12 +1,17 @@
 "use client";
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
-import { Loader2, Mail, ArrowLeft, CheckCircle } from "lucide-react";
+import { Loader2, Mail, ArrowLeft, CheckCircle, AlertCircle } from "lucide-react";
+import { Suspense } from "react";
 
-export default function ForgotPasswordPage() {
+function ForgotPasswordContent() {
+  const params = useSearchParams();
+  const linkError = params.get("error");
+
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(linkError === "expired" ? "Your reset link expired. Request a new one." : "");
   const [sent, setSent] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -20,16 +25,10 @@ export default function ForgotPasswordPage() {
     );
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      // Use exact URL registered in Supabase redirect list
       redirectTo: `${window.location.origin}/auth/callback`,
     });
 
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-      return;
-    }
-
+    if (error) { setError(error.message); setLoading(false); return; }
     setSent(true);
     setLoading(false);
   };
@@ -41,8 +40,11 @@ export default function ForgotPasswordPage() {
           <CheckCircle size={32} className="text-green-600" />
         </div>
         <h2 className="text-xl font-semibold text-gray-900 mb-2">Check your email</h2>
-        <p className="text-gray-500 text-sm mb-6">
-          We sent a password reset link to <strong>{email}</strong>. Click it to reset your password.
+        <p className="text-gray-500 text-sm mb-2">
+          We sent a reset link to <strong>{email}</strong>.
+        </p>
+        <p className="text-amber-600 text-xs mb-6">
+          ⚠️ Click the link immediately — it expires quickly.
         </p>
         <a href="/login" className="text-indigo-600 text-sm font-medium hover:text-indigo-700">
           Back to sign in
@@ -60,7 +62,7 @@ export default function ForgotPasswordPage() {
         </div>
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
           <p className="text-sm text-gray-500 mb-4">
-            Enter your email and we'll send you a link to reset your password.
+            Enter your email and we'll send you a reset link.
           </p>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -74,7 +76,9 @@ export default function ForgotPasswordPage() {
               </div>
             </div>
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-red-700 text-xs">{error}</div>
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-amber-700 text-xs flex items-center gap-2">
+                <AlertCircle size={14} /> {error}
+              </div>
             )}
             <button type="submit" disabled={loading}
               className="w-full flex items-center justify-center gap-2 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-xl font-medium text-sm">
@@ -92,3 +96,10 @@ export default function ForgotPasswordPage() {
   );
 }
 
+export default function ForgotPasswordPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin" size={20} /></div>}>
+      <ForgotPasswordContent />
+    </Suspense>
+  );
+}
