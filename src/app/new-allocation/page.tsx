@@ -219,7 +219,7 @@ function NewAllocationContent() {
     dates: "Dates",
   };
   const currentStepIndex = stepOrder.indexOf(step);
-  const canProceedDivisions = selectedDivisions.length >= 1 && selectedDivisions.every(d => d.name && (d.qbo_location_id || d.qbo_class_id || true));
+  const canProceedDivisions = selectedDivisions.length >= 1 && selectedDivisions.every(d => d.qbo_location_id || d.qbo_class_id);
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center gap-3 text-gray-500">
@@ -322,13 +322,6 @@ function NewAllocationContent() {
                       <option key={item.Id} value={item.Id}>{item.Name}</option>
                     ))}
                   </select>
-                  <input
-                    type="text"
-                    value={div.name}
-                    onChange={e => updateDivision(div.id, { name: e.target.value })}
-                    placeholder="Division label"
-                    className="w-32 text-sm border border-gray-200 rounded-lg px-2 py-1.5"
-                  />
                   {selectedDivisions.length > 1 && (
                     <button onClick={() => removeDivision(div.id)} className="text-gray-300 hover:text-red-400">
                       <Trash2 size={14} />
