@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Settings, LogOut, ChevronDown, Building2, Plus } from "lucide-react";
+import { Settings, LogOut, ChevronDown, Building2, Plus, CreditCard } from "lucide-react";
 
 interface Company {
   id: string;
@@ -19,6 +19,19 @@ export default function Nav({ showSettings = true }: NavProps) {
   const [currentTenantId, setCurrentTenantId] = useState<string>("");
   const [showSwitcher, setShowSwitcher] = useState(false);
   const [switching, setSwitching] = useState(false);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/stripe/subscription", { credentials: "include" })
+      .then(r => r.json())
+      .then(d => setSubscriptionStatus(d.subscription?.subscription_status ?? null));
+  }, []);
+
+  const handleManageBilling = async () => {
+    const res = await fetch("/api/stripe/portal", { method: "POST", credentials: "include" });
+    const data = await res.json();
+    if (data.url) window.location.href = data.url;
+  };
 
   useEffect(() => {
     fetch("/api/companies", { credentials: "include" })
@@ -134,6 +147,12 @@ export default function Nav({ showSettings = true }: NavProps) {
             <Settings size={14} /> Settings
           </a>
         )}
+        {subscriptionStatus === "active" && (
+          <button onClick={handleManageBilling}
+            className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1">
+            <CreditCard size={14} /> Billing
+          </button>
+        )}
         <button onClick={handleSignOut}
           className="text-sm text-gray-400 hover:text-gray-600 flex items-center gap-1">
           <LogOut size={14} /> Sign out
@@ -142,3 +161,4 @@ export default function Nav({ showSettings = true }: NavProps) {
     </nav>
   );
 }
+
