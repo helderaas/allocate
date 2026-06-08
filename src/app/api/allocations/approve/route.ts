@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServiceSupabase } from "@/lib/supabase";
 import { buildJournalEntryPayload } from "@/lib/allocation-engine";
-import { postJournalEntry, voidJournalEntry, Division } from "@/lib/qbo-client";
+import { postJournalEntry, voidJournalEntry, Division, QBOAuthExpiredError } from "@/lib/qbo-client";
 import { AllocationDraft } from "@/types";
 
 export async function POST(req: NextRequest) {
@@ -49,6 +49,9 @@ export async function POST(req: NextRequest) {
     try {
       await voidJournalEntry(tenant.id, tenant.qbo_realm_id, tenant.qbo_access_token, tenant.qbo_refresh_token, draft.qbo_journal_entry_id);
     } catch (err) {
+      if (err instanceof QBOAuthExpiredError) {
+        return NextResponse.json({ error: "Your QuickBooks connection has expired. Please reconnect QBO from the dashboard.", qbo_reconnect_required: true }, { status: 401 });
+      }
       const msg = err instanceof Error ? err.message : String(err);
       return NextResponse.json({ error: `Failed to void existing journal entry: ${msg}` }, { status: 500 });
     }
@@ -67,6 +70,9 @@ export async function POST(req: NextRequest) {
   try {
     je = await postJournalEntry(tenant.id, tenant.qbo_realm_id, tenant.qbo_access_token, tenant.qbo_refresh_token, payload);
   } catch (err) {
+    if (err instanceof QBOAuthExpiredError) {
+      return NextResponse.json({ error: "Your QuickBooks connection has expired. Please reconnect QBO from the dashboard.", qbo_reconnect_required: true }, { status: 401 });
+    }
     const msg = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error: `Failed to post journal entry: ${msg}` }, { status: 500 });
   }

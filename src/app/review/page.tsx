@@ -180,7 +180,11 @@ function ReviewContent() {
       setPosted(true);
     } else {
       const data = await res.json();
-      setError(data.error ?? "Something went wrong");
+      if (data.qbo_reconnect_required) {
+        setError("Your QuickBooks connection has expired. Please go back to the dashboard and reconnect QuickBooks.");
+      } else {
+        setError(data.error ?? "Something went wrong");
+      }
     }
     setPosting(false);
   };

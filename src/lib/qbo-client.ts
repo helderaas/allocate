@@ -2,6 +2,14 @@ import axios from "axios";
 import { QBOTokens, QBOAccount, QBOLocation } from "@/types";
 import { getServiceSupabase } from "./supabase";
 
+// Thrown when the QBO refresh token itself is expired — user must reconnect
+export class QBOAuthExpiredError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "QBOAuthExpiredError";
+  }
+}
+
 const QBO_BASE = {
   sandbox: "https://sandbox-quickbooks.api.intuit.com",
   production: "https://quickbooks.api.intuit.com",
@@ -18,20 +26,30 @@ export async function refreshQBOToken(tenantId: string, refreshToken: string): P
     `${process.env.QBO_CLIENT_ID}:${process.env.QBO_CLIENT_SECRET}`
   ).toString("base64");
 
-  const { data } = await axios.post<QBOTokens>(
-    "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer",
-    params.toString(),
-    { headers: { Authorization: `Basic ${credentials}`, "Content-Type": "application/x-www-form-urlencoded" } }
-  );
+  try {
+    const { data } = await axios.post<QBOTokens>(
+      "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer",
+      params.toString(),
+      { headers: { Authorization: `Basic ${credentials}`, "Content-Type": "application/x-www-form-urlencoded" } }
+    );
 
-  const db = getServiceSupabase();
-  await db.from("tenants").update({
-    qbo_access_token: data.access_token,
-    qbo_refresh_token: data.refresh_token,
-    qbo_token_expires_at: new Date(Date.now() + data.expires_in * 1000).toISOString(),
-  }).eq("id", tenantId);
+    const db = getServiceSupabase();
+    await db.from("tenants").update({
+      qbo_access_token: data.access_token,
+      qbo_refresh_token: data.refresh_token,
+      qbo_token_expires_at: new Date(Date.now() + data.expires_in * 1000).toISOString(),
+    }).eq("id", tenantId);
 
-  return data;
+    return data;
+  } catch (err: unknown) {
+    // Refresh token itself is expired — user must reconnect QBO
+    const status = axios.isAxiosError(err) ? err.response?.status : null;
+    const qboError = axios.isAxiosError(err) ? err.response?.data?.error : null;
+    if (status === 400 || status === 401 || qboError === "invalid_grant") {
+      throw new QBOAuthExpiredError("QBO session expired. Please reconnect QuickBooks.");
+    }
+    throw err;
+  }
 }
 
 export async function qboRequest<T>(

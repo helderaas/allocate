@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServiceSupabase } from "@/lib/supabase";
-import { voidJournalEntry } from "@/lib/qbo-client";
+import { voidJournalEntry, QBOAuthExpiredError } from "@/lib/qbo-client";
 
 export async function POST(req: NextRequest) {
   const tenantId = req.cookies.get("tenant_id")?.value;
@@ -36,6 +36,9 @@ export async function POST(req: NextRequest) {
       draft.qbo_journal_entry_id
     );
   } catch (err) {
+    if (err instanceof QBOAuthExpiredError) {
+      return NextResponse.json({ error: "Your QuickBooks connection has expired. Please reconnect QBO from the dashboard.", qbo_reconnect_required: true }, { status: 401 });
+    }
     const msg = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error: `Failed to void in QBO: ${msg}` }, { status: 500 });
   }

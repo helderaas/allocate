@@ -50,6 +50,7 @@ export default function DashboardPage() {
   const [showLaunchModal, setShowLaunchModal] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("fresh");
   const [error, setError] = useState("");
+  const [qboReconnectRequired, setQboReconnectRequired] = useState(false);
   const [voidingId, setVoidingId] = useState<string | null>(null);
   const [showVoidConfirm, setShowVoidConfirm] = useState<string | null>(null);
 
@@ -120,7 +121,12 @@ export default function DashboardPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? "Failed to void allocation");
+        if (data.qbo_reconnect_required) {
+          setQboReconnectRequired(true);
+          setError("Your QuickBooks connection has expired. Please reconnect QuickBooks.");
+        } else {
+          setError(data.error ?? "Failed to void allocation");
+        }
       } else {
         loadHistory();
       }
@@ -165,7 +171,17 @@ export default function DashboardPage() {
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-6 text-red-700 text-sm">{error}</div>
+          <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-6 text-red-700 text-sm flex items-center justify-between gap-3">
+            <span>{error}</span>
+            {qboReconnectRequired && (
+              <a
+                href={`https://appcenter.intuit.com/connect/oauth2?client_id=${process.env.NEXT_PUBLIC_QBO_CLIENT_ID}&redirect_uri=${process.env.NEXT_PUBLIC_QBO_REDIRECT_URI}&response_type=code&scope=com.intuit.quickbooks.accounting%20openid%20profile%20email&state=allocate_connect`}
+                className="shrink-0 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-medium"
+              >
+                Reconnect QuickBooks
+              </a>
+            )}
+          </div>
         )}
 
         {/* Launch modal */}

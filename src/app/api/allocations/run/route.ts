@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServiceSupabase } from "@/lib/supabase";
-import { fetchGLBalances, fetchRevenueSplit, Division } from "@/lib/qbo-client";
+import { fetchGLBalances, fetchRevenueSplit, Division, QBOAuthExpiredError } from "@/lib/qbo-client";
 import { calculateAllocationLines } from "@/lib/allocation-engine";
 
 export async function POST(req: NextRequest) {
@@ -42,18 +42,27 @@ export async function POST(req: NextRequest) {
   const trackingType = tenant.division_tracking_type ?? "location";
   const accountIds = rules.map((r: { qbo_account_id: string }) => r.qbo_account_id);
 
-  const [glBalances, revenueSplit] = await Promise.all([
-    fetchGLBalances(
-      tenant.id, tenant.qbo_realm_id,
-      tenant.qbo_access_token, tenant.qbo_refresh_token,
-      startDate, endDate, accountIds, divisions, trackingType
-    ),
-    fetchRevenueSplit(
-      tenant.id, tenant.qbo_realm_id,
-      tenant.qbo_access_token, tenant.qbo_refresh_token,
-      startDate, endDate, divisions, trackingType
-    ),
-  ]);
+  let glBalances, revenueSplit;
+  try {
+    [glBalances, revenueSplit] = await Promise.all([
+      fetchGLBalances(
+        tenant.id, tenant.qbo_realm_id,
+        tenant.qbo_access_token, tenant.qbo_refresh_token,
+        startDate, endDate, accountIds, divisions, trackingType
+      ),
+      fetchRevenueSplit(
+        tenant.id, tenant.qbo_realm_id,
+        tenant.qbo_access_token, tenant.qbo_refresh_token,
+        startDate, endDate, divisions, trackingType
+      ),
+    ]);
+  } catch (err) {
+    if (err instanceof QBOAuthExpiredError) {
+      return NextResponse.json({ error: "Your QuickBooks connection has expired. Please reconnect QBO from the dashboard.", qbo_reconnect_required: true }, { status: 401 });
+    }
+    const msg = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: `Failed to fetch QBO data: ${msg}` }, { status: 500 });
+  }
 
   const lines = calculateAllocationLines(rules, glBalances, revenueSplit, divisions);
 
