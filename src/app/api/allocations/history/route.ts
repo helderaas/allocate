@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
   }
 
   // Dashboard — deduplicate by period, best status wins
-  const statusPriority: Record<string, number> = { posted: 3, voided: 2, draft: 1 };
+  const statusPriority: Record<string, number> = { voided: 3, posted: 2, draft: 1 };
   const byPeriod = new Map<string, typeof allDrafts[0]>();
 
   for (const draft of (allDrafts ?? [])) {
