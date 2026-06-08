@@ -8,7 +8,11 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 type CookieToSet = { name: string; value: string; options?: Record<string, unknown> };
 
 export function getServiceSupabase() {
-  return createClient(supabaseUrl, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+  return createClient(supabaseUrl, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+    global: {
+      headers: { "Cache-Control": "no-cache, no-store" }
+    }
+  });
 }
 
 export async function getServerSupabase() {
