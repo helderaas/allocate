@@ -330,18 +330,39 @@ export default function DashboardPage() {
               {draftEntries.map(a => (
                 <div
                   key={a.id}
-                  onClick={() => router.push("/review?period=" + a.period + "&t=" + Date.now())}
-                  className="flex items-center gap-4 p-4 border-b border-gray-100 last:border-0 hover:bg-gray-50 cursor-pointer"
+                  className="flex items-center gap-4 p-4 border-b border-gray-100 last:border-0 hover:bg-gray-50"
                 >
                   <div className="w-8 h-8 bg-amber-50 rounded-lg flex items-center justify-center shrink-0">
                     <Clock size={15} className="text-amber-500" />
                   </div>
-                  <div className="flex-1 min-w-0">
+                  <div
+                    className="flex-1 min-w-0 cursor-pointer"
+                    onClick={() => router.push("/review?period=" + a.period + "&t=" + Date.now())}
+                  >
                     <p className="text-sm font-medium text-gray-900">{periodLabel(a.period)}</p>
                     <p className="text-xs text-gray-400 truncate">{a.description || "Division allocation"}</p>
                   </div>
                   <span className="text-xs font-medium text-amber-500">Draft</span>
-                  <ChevronRight size={14} className="text-gray-300" />
+                  <button
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      await fetch("/api/allocations/draft", {
+                        method: "DELETE",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ draftId: a.id }),
+                      });
+                      setTimeout(() => loadHistory(), 500);
+                    }}
+                    className="text-gray-300 hover:text-red-400 transition-colors"
+                    title="Delete draft"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                  <ChevronRight
+                    size={14}
+                    className="text-gray-300 cursor-pointer"
+                    onClick={() => router.push("/review?period=" + a.period + "&t=" + Date.now())}
+                  />
                 </div>
               ))}
             </div>
