@@ -18,7 +18,6 @@ export async function GET(req: NextRequest) {
     .order("created_at", { ascending: false })
     .limit(200);
 
-  console.log("History API — tenantId:", tenantId, "error:", error?.message, "rows:", allDrafts?.map(d => d.id.slice(0,8) + ":" + d.status));
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
