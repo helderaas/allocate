@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { getServiceSupabase } from "@/lib/supabase";
-import Stripe from "stripe";
 
 export async function POST(req: NextRequest) {
   const body = await req.text();
@@ -9,7 +8,7 @@ export async function POST(req: NextRequest) {
 
   if (!sig) return NextResponse.json({ error: "No signature" }, { status: 400 });
 
-  let event: Stripe.Event;
+  let event;
   try {
     event = stripe.webhooks.constructEvent(
       body, sig, process.env.STRIPE_WEBHOOK_SECRET!
@@ -23,22 +22,31 @@ export async function POST(req: NextRequest) {
 
   switch (event.type) {
     case "checkout.session.completed": {
-      const session = event.data.object as Stripe.CheckoutSession;
+      const session = event.data.object as {
+        metadata?: { firm_id?: string };
+        subscription?: string;
+      };
       const firmId = session.metadata?.firm_id;
       if (!firmId || !session.subscription) break;
 
-      const sub = await stripe.subscriptions.retrieve(session.subscription as string);
+      const sub = await stripe.subscriptions.retrieve(session.subscription);
       await db.from("firms").update({
         stripe_subscription_id: sub.id,
         subscription_status: "active",
         subscription_quantity: sub.items.data[0]?.quantity ?? 1,
-        subscription_current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+        subscription_current_period_end: new Date((sub as unknown as { current_period_end: number }).current_period_end * 1000).toISOString(),
       }).eq("id", firmId);
       break;
     }
 
     case "customer.subscription.updated": {
-      const sub = event.data.object as Stripe.Subscription;
+      const sub = event.data.object as {
+        id: string;
+        status: string;
+        metadata?: { firm_id?: string };
+        items: { data: { quantity?: number }[] };
+        current_period_end: number;
+      };
       const firmId = sub.metadata?.firm_id;
       if (!firmId) break;
 
@@ -51,7 +59,9 @@ export async function POST(req: NextRequest) {
     }
 
     case "customer.subscription.deleted": {
-      const sub = event.data.object as Stripe.Subscription;
+      const sub = event.data.object as {
+        metadata?: { firm_id?: string };
+      };
       const firmId = sub.metadata?.firm_id;
       if (!firmId) break;
 
@@ -63,8 +73,8 @@ export async function POST(req: NextRequest) {
     }
 
     case "invoice.payment_failed": {
-      const invoice = event.data.object as Stripe.Invoice;
-      const customerId = invoice.customer as string;
+      const invoice = event.data.object as { customer?: string };
+      const customerId = invoice.customer;
       if (!customerId) break;
 
       await db.from("firms").update({
