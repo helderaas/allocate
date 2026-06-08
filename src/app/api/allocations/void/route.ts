@@ -9,14 +9,18 @@ export async function POST(req: NextRequest) {
   const { draftId, note } = await req.json();
   if (!draftId) return NextResponse.json({ error: "draftId required" }, { status: 400 });
 
+  console.log("Void attempt — tenantId:", tenantId, "draftId:", draftId);
+
   const db = getServiceSupabase();
 
-  const { data: draft } = await db
+  const { data: draft, error: draftError } = await db
     .from("allocation_drafts")
     .select("*")
     .eq("id", draftId)
     .eq("tenant_id", tenantId)
     .single();
+
+  console.log("Draft lookup result:", draft?.id, draft?.status, "error:", draftError?.message);
 
   if (!draft) return NextResponse.json({ error: "Draft not found" }, { status: 404 });
   if (draft.status !== "posted") return NextResponse.json({ error: "Only posted allocations can be voided" }, { status: 400 });
