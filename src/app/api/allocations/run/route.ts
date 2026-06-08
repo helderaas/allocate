@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
   await db.from("allocation_drafts").delete()
     .eq("tenant_id", tenantId)
     .eq("period", period)
-    .eq("status", "draft");
+    .in("status", ["draft", "voided"]);
 
   const { data: draft, error } = await db
     .from("allocation_drafts")
