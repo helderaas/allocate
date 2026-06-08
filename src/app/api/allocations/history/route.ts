@@ -9,13 +9,7 @@ export async function GET(req: NextRequest) {
 
   const showAll = req.nextUrl.searchParams.get("all") === "true";
 
-  // Create a brand new client each time to avoid any connection reuse
-  const { createClient } = await import("@supabase/supabase-js");
-  const db = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false }, global: { headers: { "Cache-Control": "no-cache" } } }
-  );
+  const db = getServiceSupabase();
 
   const { data: allDrafts, error } = await db
     .from("allocation_drafts")
