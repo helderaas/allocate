@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { createBrowserClient } from "@supabase/ssr";
 import { Loader2, Mail, ArrowLeft, CheckCircle, AlertCircle } from "lucide-react";
 import { Suspense } from "react";
 
@@ -11,7 +10,9 @@ function ForgotPasswordContent() {
 
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(linkError === "expired" ? "Your reset link expired. Request a new one." : "");
+  const [error, setError] = useState(
+    linkError === "expired" ? "Your reset link expired. Request a new one." : ""
+  );
   const [sent, setSent] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -19,16 +20,14 @@ function ForgotPasswordContent() {
     setLoading(true);
     setError("");
 
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/callback`,
+    // Call server-side API that uses admin SDK (no PKCE)
+    const res = await fetch("/api/auth/forgot-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
     });
 
-    if (error) { setError(error.message); setLoading(false); return; }
+    // Always show success (don't reveal if email exists)
     setSent(true);
     setLoading(false);
   };
@@ -40,11 +39,8 @@ function ForgotPasswordContent() {
           <CheckCircle size={32} className="text-green-600" />
         </div>
         <h2 className="text-xl font-semibold text-gray-900 mb-2">Check your email</h2>
-        <p className="text-gray-500 text-sm mb-2">
-          We sent a reset link to <strong>{email}</strong>.
-        </p>
-        <p className="text-amber-600 text-xs mb-6">
-          ⚠️ Click the link immediately — it expires quickly.
+        <p className="text-gray-500 text-sm mb-6">
+          If an account exists for <strong>{email}</strong>, we sent a reset link.
         </p>
         <a href="/login" className="text-indigo-600 text-sm font-medium hover:text-indigo-700">
           Back to sign in
