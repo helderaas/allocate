@@ -230,7 +230,7 @@ function ReviewContent() {
         <h2 className="text-xl font-semibold text-gray-900 mb-2">Journal entry posted!</h2>
         <p className="text-gray-500 text-sm mb-6">The allocation has been posted to QuickBooks.</p>
         <button
-          onClick={() => router.push("/dashboard")}
+          onClick={() => window.location.href = "/dashboard"}
           className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-medium text-sm hover:bg-indigo-700"
         >
           Back to dashboard
@@ -254,7 +254,7 @@ function ReviewContent() {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-4xl mx-auto py-10 px-4">
         <button
-          onClick={() => router.push("/dashboard")}
+          onClick={() => window.location.href = "/dashboard"}
           className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-6"
         >
           <ArrowLeft size={16} /> Back to dashboard
