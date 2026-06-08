@@ -127,9 +127,9 @@ export default async function LandingPage() {
       {/* Who it's for */}
       <section className="bg-indigo-600 py-16">
         <div className="max-w-4xl mx-auto px-6 text-center">
-          <h2 className="text-3xl font-bold text-white mb-4">Built for multi-division practices</h2>
+          <h2 className="text-3xl font-bold text-white mb-4">Built for multi-division, multi-location companies</h2>
           <p className="text-indigo-200 text-lg mb-8 max-w-2xl mx-auto">
-            Perfect for chiropractic, behavioral health, physical therapy, and other professional practices operating multiple divisions or service lines under one QuickBooks company.
+            Perfect for any company operating multiple divisions, locations, or service lines under one QuickBooks company — from professional services to retail, healthcare to hospitality.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
             {[
@@ -235,4 +235,5 @@ export default async function LandingPage() {
     </div>
   );
 }
+
 
