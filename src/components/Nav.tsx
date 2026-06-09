@@ -129,7 +129,7 @@ export default function Nav() {
     <>
       <nav className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between relative">
         <div className="flex items-center gap-4">
-          <span className="font-semibold text-gray-900">Allocate</span>
+          <a href="/" className="font-semibold text-gray-900 hover:text-brand-600 transition-colors">Allocate</a>
 
           {companies.length > 0 && (
             <div className="relative">
