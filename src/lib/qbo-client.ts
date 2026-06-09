@@ -311,25 +311,23 @@ export async function fetchRevenueSplit(
       const filterId = trackingType === "class" ? div.qbo_class_id : div.qbo_location_id;
       if (!filterId) return Promise.resolve({ Report: { Rows: { Row: [] } } });
       const filterParam: Record<string, string> = trackingType === "class" ? { class: filterId } : { department: filterId };
-      console.log(`Division ${div.name} P&L params:`, { start_date: startDate, end_date: endDate, ...filterParam });
-      return qboRequest<{ Report: PLReport }>(
+      return qboRequest<PLReport & { Report?: PLReport }>(
         tenantId, realmId, accessToken, refreshToken,
         "/reports/ProfitAndLoss",
         { start_date: startDate, end_date: endDate, accounting_method: "Accrual", ...filterParam }
       ).then(result => {
-        const raw = JSON.stringify(result ?? {});
-        console.log(`Division ${div.name} raw P&L (first 800):`, raw.slice(0, 800));
         return result;
       }).catch(err => {
         console.error(`Division ${div.name} P&L error:`, err?.response?.data ?? err?.message);
-        return { Report: { Rows: { Row: [] } } } as { Report: PLReport };
+        return { Rows: { Row: [] } } as PLReport;
       });
     })
   );
 
   const revenues = plResults.map((pl, i) => {
-    const rows = (pl?.Report?.Rows?.Row ?? []) as PLRow[];
-    console.log(`Division ${i} P&L rows:`, JSON.stringify(rows).slice(0, 1000));
+    // Production API returns report directly, sandbox wraps in { Report: ... }
+    const rows = ((pl as unknown as PLReport)?.Rows?.Row ?? pl?.Report?.Rows?.Row ?? []) as PLRow[];
+    console.log(`Division ${i} income rows count:`, rows.length);
     return Math.abs(sumIncomeFromPL(rows));
   });
   console.log("Revenue split fetch — revenues:", revenues, "total:", revenues.reduce((s, r) => s + r, 0));
