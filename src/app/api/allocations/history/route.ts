@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   if (showAll) {
-    const drafts = (allDrafts ?? []).sort((a, b) => b.period.localeCompare(a.period));
+    const drafts = (allDrafts ?? []).sort((a, b) => b.created_at.localeCompare(a.created_at));
     return NextResponse.json({ drafts }, { headers: { "Cache-Control": "no-store" } });
   }
 
