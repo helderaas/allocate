@@ -16,6 +16,9 @@ export default async function LandingPage() {
       <nav className="border-b border-gray-100 px-6 py-4 flex items-center justify-between max-w-6xl mx-auto">
         <span className="text-xl font-bold text-gray-900">Allocate</span>
         <div className="flex items-center gap-4">
+          <Link href="/blog" className="text-sm text-gray-600 hover:text-gray-900 font-medium">
+            Blog
+          </Link>
           <Link href="/login" className="text-sm text-gray-600 hover:text-gray-900 font-medium">
             Sign in
           </Link>
