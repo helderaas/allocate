@@ -325,15 +325,12 @@ export async function fetchRevenueSplit(
   );
 
   const revenues = plResults.map((pl, i) => {
-    // Production API returns report directly, sandbox wraps in { Report: ... }
     const plAny = pl as unknown as Record<string, unknown>;
     const rows = ((plAny?.Rows as { Row?: PLRow[] })?.Row
       ?? (plAny?.Report as { Rows?: { Row?: PLRow[] } })?.Rows?.Row
       ?? []) as PLRow[];
-    console.log(`Division ${i} income rows count:`, rows.length);
     return Math.abs(sumIncomeFromPL(rows));
   });
-  console.log("Revenue split fetch — revenues:", revenues, "total:", revenues.reduce((s, r) => s + r, 0));
   const totalRevenue = revenues.reduce((sum, r) => sum + r, 0);
 
   // Fall back to equal split if no revenue data
