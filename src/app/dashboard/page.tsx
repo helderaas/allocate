@@ -163,7 +163,7 @@ export default function DashboardPage() {
   if (subscriptionStatus === "loading") {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600" />
       </div>
     );
   }
@@ -183,7 +183,7 @@ export default function DashboardPage() {
           <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
           <button
             onClick={handleNewAllocation}
-            className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium text-sm"
+            className="flex items-center gap-2 px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-medium text-sm"
           >
             <Plus size={16} /> New Allocation
           </button>
@@ -227,19 +227,19 @@ export default function DashboardPage() {
                   onClick={() => setSelectedTemplateId("fresh")}
                   className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-colors ${
                     selectedTemplateId === "fresh"
-                      ? "border-indigo-400 bg-indigo-50"
+                      ? "border-brand-400 bg-brand-50"
                       : "border-gray-200 hover:border-gray-300"
                   }`}
                 >
-                  <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center shrink-0">
-                    <Plus size={16} className="text-indigo-600" />
+                  <div className="w-8 h-8 bg-brand-100 rounded-lg flex items-center justify-center shrink-0">
+                    <Plus size={16} className="text-brand-600" />
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-900">Start fresh</p>
                     <p className="text-xs text-gray-400">Choose divisions, accounts, and rules from scratch</p>
                   </div>
                   {selectedTemplateId === "fresh" && (
-                    <CheckCircle size={16} className="text-indigo-500 ml-auto shrink-0" />
+                    <CheckCircle size={16} className="text-brand-500 ml-auto shrink-0" />
                   )}
                 </button>
 
@@ -254,19 +254,19 @@ export default function DashboardPage() {
                       onClick={() => setSelectedTemplateId(t.id)}
                       className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-colors ${
                         selectedTemplateId === t.id
-                          ? "border-indigo-400 bg-indigo-50"
+                          ? "border-brand-400 bg-brand-50"
                           : "border-gray-200 hover:border-gray-300"
                       }`}
                     >
-                      <div className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center shrink-0">
-                        <BookOpen size={15} className="text-violet-600" />
+                      <div className="w-8 h-8 bg-brand-100 rounded-lg flex items-center justify-center shrink-0">
+                        <BookOpen size={15} className="text-brand-600" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900">{t.name}</p>
                         <p className="text-xs text-gray-400">{t.rules.length} account{t.rules.length !== 1 ? "s" : ""}</p>
                       </div>
                       {selectedTemplateId === t.id && (
-                        <CheckCircle size={16} className="text-indigo-500 shrink-0" />
+                        <CheckCircle size={16} className="text-brand-500 shrink-0" />
                       )}
                     </button>
                   ))
@@ -276,7 +276,7 @@ export default function DashboardPage() {
               </div>
               <button
                 onClick={handleLaunchContinue}
-                className="w-full flex items-center justify-center gap-2 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium text-sm"
+                className="w-full flex items-center justify-center gap-2 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-medium text-sm"
               >
                 Continue <ChevronRight size={16} />
               </button>
@@ -298,8 +298,8 @@ export default function DashboardPage() {
           ) : (
             templates.map(t => (
               <div key={t.id} className="flex items-center gap-4 p-4 border-b border-gray-100 last:border-0">
-                <div className="w-8 h-8 bg-violet-50 rounded-lg flex items-center justify-center shrink-0">
-                  <BookOpen size={15} className="text-violet-500" />
+                <div className="w-8 h-8 bg-brand-50 rounded-lg flex items-center justify-center shrink-0">
+                  <BookOpen size={15} className="text-brand-500" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900">{t.name}</p>
@@ -307,7 +307,7 @@ export default function DashboardPage() {
                 </div>
                 <button
                   onClick={() => { setSelectedTemplateId(t.id); setShowLaunchModal(true); }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-medium rounded-lg"
                 >
                   <Play size={12} /> Use
                 </button>
@@ -374,7 +374,7 @@ export default function DashboardPage() {
           <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide">Recent Allocations</h2>
           <button
             onClick={() => router.push("/history")}
-            className="flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-700 font-medium"
+            className="flex items-center gap-1.5 text-xs text-brand-600 hover:text-brand-700 font-medium"
           >
             <History size={13} /> View full history
           </button>
@@ -390,9 +390,9 @@ export default function DashboardPage() {
             postedEntries.map(a => (
               <div key={a.id} className="flex items-center gap-4 p-4 border-b border-gray-100 last:border-0">
                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                  a.status === "posted" ? "bg-green-50" : "bg-gray-100"
+                  a.status === "posted" ? "bg-brand-200/30" : "bg-gray-100"
                 }`}>
-                  <Calendar size={15} className={a.status === "posted" ? "text-green-500" : "text-gray-400"} />
+                  <Calendar size={15} className={a.status === "posted" ? "text-brand-sage" : "text-gray-400"} />
                 </div>
                 <div
                   className="flex-1 min-w-0 cursor-pointer"
@@ -404,7 +404,7 @@ export default function DashboardPage() {
                   <p className="text-xs text-gray-400 truncate">{a.description || "Division allocation"}</p>
                 </div>
                 <div className={`flex items-center gap-1.5 text-xs font-medium ${
-                  a.status === "posted" ? "text-green-600" : "text-gray-400"
+                  a.status === "posted" ? "text-brand-sage" : "text-gray-400"
                 }`}>
                   {a.status === "posted" ? <CheckCircle size={14} /> : <XCircle size={14} />}
                   <span>{a.status.charAt(0).toUpperCase() + a.status.slice(1)}</span>

@@ -39,8 +39,8 @@ export default function ResetPasswordPage() {
   if (success) return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-sm text-center">
-        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <CheckCircle size={32} className="text-green-600" />
+        <div className="w-16 h-16 bg-brand-200 rounded-full flex items-center justify-center mx-auto mb-4">
+          <CheckCircle size={32} className="text-brand-sage" />
         </div>
         <h2 className="text-xl font-semibold text-gray-900 mb-2">Password updated!</h2>
         <p className="text-gray-500 text-sm">Redirecting you to sign in...</p>
@@ -63,7 +63,7 @@ export default function ResetPasswordPage() {
                 <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input type="password" value={password} onChange={e => setPassword(e.target.value)} required
                   placeholder="Min. 8 characters"
-                  className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-400"
+                  className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-brand-400"
                   autoFocus />
               </div>
             </div>
@@ -73,14 +73,14 @@ export default function ResetPasswordPage() {
                 <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required
                   placeholder="••••••••"
-                  className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-400" />
+                  className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-brand-400" />
               </div>
             </div>
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-red-700 text-xs">{error}</div>
             )}
             <button type="submit" disabled={loading}
-              className="w-full flex items-center justify-center gap-2 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-xl font-medium text-sm">
+              className="w-full flex items-center justify-center gap-2 py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-60 text-white rounded-xl font-medium text-sm">
               {loading ? <Loader2 size={16} className="animate-spin" /> : <Lock size={16} />}
               {loading ? "Updating..." : "Update password"}
             </button>

@@ -5,7 +5,7 @@ export default function PrivacyPolicyPage() {
     <div className="min-h-screen bg-white">
       <nav className="border-b border-gray-200 px-6 py-3 flex items-center justify-between">
         <Link href="/" className="font-semibold text-gray-900">Allocate</Link>
-        <Link href="/login" className="text-sm text-indigo-600 hover:text-indigo-700">Sign in</Link>
+        <Link href="/login" className="text-sm text-brand-600 hover:text-brand-700">Sign in</Link>
       </nav>
 
       <div className="max-w-3xl mx-auto px-6 py-12">
@@ -108,7 +108,7 @@ export default function PrivacyPolicyPage() {
               <li>Export your allocation data</li>
               <li>Cancel your subscription at any time</li>
             </ul>
-            <p className="mt-2">To exercise any of these rights, contact us at <a href="mailto:privacy@allocateapp.net" className="text-indigo-600 hover:text-indigo-700">privacy@allocateapp.net</a>.</p>
+            <p className="mt-2">To exercise any of these rights, contact us at <a href="mailto:privacy@allocateapp.net" className="text-brand-600 hover:text-brand-700">privacy@allocateapp.net</a>.</p>
           </section>
 
           <section>
@@ -132,7 +132,7 @@ export default function PrivacyPolicyPage() {
             <div className="mt-2 p-4 bg-gray-50 rounded-xl text-sm">
               <p className="font-medium">Allocate LLC</p>
               <p>Athens, Georgia</p>
-              <p><a href="mailto:privacy@allocateapp.net" className="text-indigo-600 hover:text-indigo-700">privacy@allocateapp.net</a></p>
+              <p><a href="mailto:privacy@allocateapp.net" className="text-brand-600 hover:text-brand-700">privacy@allocateapp.net</a></p>
             </div>
           </section>
 

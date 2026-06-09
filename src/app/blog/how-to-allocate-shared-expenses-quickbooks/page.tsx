@@ -14,7 +14,7 @@ export default function Post() {
         <Link href="/" className="text-xl font-bold text-gray-900">Allocate</Link>
         <div className="flex items-center gap-4">
           <Link href="/login" className="text-sm text-gray-600 hover:text-gray-900 font-medium">Sign in</Link>
-          <Link href="/signup" className="text-sm px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors">
+          <Link href="/signup" className="text-sm px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-lg font-medium transition-colors">
             Start free trial
           </Link>
         </div>
@@ -29,7 +29,7 @@ export default function Post() {
         {/* Header */}
         <div className="mb-10">
           <div className="flex items-center gap-3 mb-4">
-            <span className="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full">QuickBooks Tips</span>
+            <span className="text-xs font-medium text-brand-600 bg-brand-50 px-2 py-1 rounded-full">QuickBooks Tips</span>
             <span className="text-xs text-gray-400">June 9, 2026 · 6 min read</span>
           </div>
           <h1 className="text-4xl font-bold text-gray-900 leading-tight mb-4">
@@ -119,7 +119,7 @@ export default function Post() {
                 },
               ].map(({ step, detail }) => (
                 <li key={step} className="flex gap-4">
-                  <div className="shrink-0 w-1 bg-indigo-200 rounded-full mt-1" />
+                  <div className="shrink-0 w-1 bg-brand-200 rounded-full mt-1" />
                   <div>
                     <p className="font-semibold text-gray-900 mb-1">{step}</p>
                     <p className="text-gray-600 text-sm leading-relaxed">{detail}</p>
@@ -176,7 +176,7 @@ export default function Post() {
                 "Any QBO company using Locations, Classes, or Departments to track divisions",
               ].map(item => (
                 <li key={item} className="flex items-start gap-2 text-gray-600 text-sm">
-                  <span className="text-indigo-500 mt-0.5 shrink-0">✓</span>
+                  <span className="text-brand-500 mt-0.5 shrink-0">✓</span>
                   {item}
                 </li>
               ))}
@@ -196,7 +196,7 @@ export default function Post() {
                 "Run your first allocation — review the journal entry and post",
               ].map((step, i) => (
                 <li key={step} className="flex items-start gap-3 text-gray-600 text-sm">
-                  <span className="w-5 h-5 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">{i + 1}</span>
+                  <span className="w-5 h-5 bg-brand-100 text-brand-600 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">{i + 1}</span>
                   {step}
                 </li>
               ))}
@@ -204,13 +204,13 @@ export default function Post() {
           </section>
 
           {/* CTA */}
-          <div className="mt-12 p-8 bg-indigo-50 rounded-2xl border border-indigo-100 text-center">
+          <div className="mt-12 p-8 bg-brand-50 rounded-2xl border border-brand-100 text-center">
             <h3 className="text-xl font-bold text-gray-900 mb-2">Stop doing this manually every month</h3>
             <p className="text-gray-600 text-sm mb-6">
               Allocate automates your shared expense journal entries and posts them directly to QuickBooks. Try it free for 14 days.
             </p>
             <Link href="/signup"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm transition-colors">
+              className="inline-flex items-center gap-2 px-6 py-3 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-semibold text-sm transition-colors">
               Start free trial <ArrowRight size={14} />
             </Link>
             <p className="text-xs text-gray-400 mt-3">No credit card required · Cancel anytime</p>

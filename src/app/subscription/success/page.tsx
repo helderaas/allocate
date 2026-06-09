@@ -22,8 +22,8 @@ export default function SubscriptionSuccessPage() {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl border border-gray-200 p-8 max-w-md w-full text-center shadow-sm">
-        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <CheckCircle size={32} className="text-green-600" />
+        <div className="w-16 h-16 bg-brand-200 rounded-full flex items-center justify-center mx-auto mb-4">
+          <CheckCircle size={32} className="text-brand-sage" />
         </div>
         <h1 className="text-2xl font-semibold text-gray-900 mb-2">You're subscribed!</h1>
         <p className="text-gray-500 text-sm mb-6">
@@ -34,7 +34,7 @@ export default function SubscriptionSuccessPage() {
         </p>
         <button
           onClick={() => window.location.href = "/dashboard"}
-          className="mt-4 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium text-sm"
+          className="mt-4 px-6 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-medium text-sm"
         >
           Go to dashboard now
         </button>

@@ -52,7 +52,7 @@ function OnboardingContent() {
     <div className="min-h-screen flex items-center justify-center">
       <div className="text-center">
         <p className="text-red-500 font-medium">Connection failed: {error}</p>
-        <a href="/" className="mt-4 text-indigo-600 text-sm underline block">Try again</a>
+        <a href="/" className="mt-4 text-brand-600 text-sm underline block">Try again</a>
       </div>
     </div>
   );
@@ -126,7 +126,7 @@ function OnboardingContent() {
             </div>
             <button disabled={!divisionA || !divisionB || divisionA.Id === divisionB.Id}
               onClick={() => setStep("accounts")}
-              className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white rounded-xl font-medium text-sm flex items-center justify-center gap-2"
+              className="w-full py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-40 text-white rounded-xl font-medium text-sm flex items-center justify-center gap-2"
             >Next: pick accounts <ChevronRight size={16} /></button>
           </div>
         )}
@@ -147,7 +147,7 @@ function OnboardingContent() {
                     className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-gray-50 text-left"
                   >
                     {selected
-                      ? <CheckSquare size={18} className="text-indigo-600 shrink-0" />
+                      ? <CheckSquare size={18} className="text-brand-600 shrink-0" />
                       : <Square size={18} className="text-gray-300 shrink-0" />}
                     <div>
                       <p className={"text-sm font-medium " + (acct.SubAccount ? "pl-3 text-gray-600" : "text-gray-900")}>
@@ -165,7 +165,7 @@ function OnboardingContent() {
                 Back
               </button>
               <button disabled={selectedAccounts.length === 0} onClick={() => setStep("splits")}
-                className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white rounded-xl font-medium text-sm flex items-center justify-center gap-2"
+                className="flex-1 py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-40 text-white rounded-xl font-medium text-sm flex items-center justify-center gap-2"
               >{selectedAccounts.length} selected — set splits <ChevronRight size={16} /></button>
             </div>
           </div>
@@ -208,7 +208,7 @@ function OnboardingContent() {
                 Back
               </button>
               <button onClick={saveConfig}
-                className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium text-sm flex items-center justify-center gap-2"
+                className="flex-1 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-medium text-sm flex items-center justify-center gap-2"
               >Save configuration <ChevronRight size={16} /></button>
             </div>
           </div>
@@ -216,12 +216,12 @@ function OnboardingContent() {
 
         {step === "done" && (
           <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center">
-            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <CheckSquare size={24} className="text-green-600" />
+            <div className="w-12 h-12 bg-brand-200 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CheckSquare size={24} className="text-brand-sage" />
             </div>
             <h2 className="text-lg font-semibold text-gray-900 mb-2">Configuration saved!</h2>
             <p className="text-sm text-gray-500 mb-6">Your allocation rules have been updated.</p>
-            <a href="/dashboard" className="inline-flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-medium text-sm hover:bg-indigo-700">
+            <a href="/dashboard" className="inline-flex items-center gap-2 px-6 py-2.5 bg-brand-600 text-white rounded-xl font-medium text-sm hover:bg-brand-700">
               Go to dashboard <ChevronRight size={16} />
             </a>
           </div>

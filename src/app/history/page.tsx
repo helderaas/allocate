@@ -135,7 +135,7 @@ export default function HistoryPage() {
   };
 
   const actionLabel: Record<string, { label: string; color: string }> = {
-    posted:   { label: "Posted",   color: "text-green-600" },
+    posted:   { label: "Posted",   color: "text-brand-sage" },
     amended:  { label: "Amended",  color: "text-blue-600" },
     voided:   { label: "Voided",   color: "text-red-500" },
     locked:   { label: "Locked",   color: "text-amber-600" },
@@ -172,7 +172,7 @@ export default function HistoryPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-semibold text-gray-900 flex items-center gap-2">
-              <History size={22} className="text-indigo-500" /> Allocation History
+              <History size={22} className="text-brand-500" /> Allocation History
             </h1>
             <p className="text-gray-500 text-sm mt-0.5">All posted and voided journal entries</p>
           </div>
@@ -200,7 +200,7 @@ export default function HistoryPage() {
             <div className="bg-white rounded-2xl border border-gray-200 w-full max-w-lg p-6 shadow-xl">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
-                  <Shield size={16} className="text-indigo-500" />
+                  <Shield size={16} className="text-brand-500" />
                   Audit Trail — {periodLabel(auditPeriod)}
                 </h2>
                 <button onClick={() => setAuditDraftId(null)} className="text-gray-400 hover:text-gray-600">
@@ -220,7 +220,7 @@ export default function HistoryPage() {
                     <div key={log.id} className="flex gap-3">
                       <div className="flex flex-col items-center">
                         <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
-                          log.action === "posted" ? "bg-green-500" :
+                          log.action === "posted" ? "bg-brand-200/300" :
                           log.action === "amended" ? "bg-blue-500" :
                           log.action === "voided" ? "bg-red-500" :
                           log.action === "locked" ? "bg-amber-500" : "bg-gray-300"
@@ -277,7 +277,7 @@ export default function HistoryPage() {
                   value={voidNote}
                   onChange={e => setVoidNote(e.target.value)}
                   placeholder="e.g. Incorrect split percentage"
-                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-indigo-400"
+                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-brand-400"
                   autoFocus
                 />
               </div>
@@ -326,13 +326,13 @@ export default function HistoryPage() {
           </div>
         ) : allEntries.length === 0 ? (
           <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
-            <div className="w-12 h-12 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Calendar size={22} className="text-indigo-400" />
+            <div className="w-12 h-12 bg-brand-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Calendar size={22} className="text-brand-400" />
             </div>
             <p className="text-gray-500 text-sm">No posted allocations yet.</p>
             <button
               onClick={() => router.push("/dashboard")}
-              className="mt-4 text-indigo-600 text-sm font-medium hover:text-indigo-700"
+              className="mt-4 text-brand-600 text-sm font-medium hover:text-brand-700"
             >
               Run your first allocation →
             </button>
@@ -349,11 +349,11 @@ export default function HistoryPage() {
                     }`}>
                       {/* Lock indicator */}
                       <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                        a.locked_at ? "bg-amber-50" : a.status === "posted" ? "bg-green-50" : "bg-gray-100"
+                        a.locked_at ? "bg-amber-50" : a.status === "posted" ? "bg-brand-200/30" : "bg-gray-100"
                       }`}>
                         {a.locked_at
                           ? <Lock size={15} className="text-amber-500" />
-                          : <Calendar size={15} className={a.status === "posted" ? "text-green-500" : "text-gray-400"} />
+                          : <Calendar size={15} className={a.status === "posted" ? "text-brand-sage" : "text-gray-400"} />
                         }
                       </div>
 
@@ -384,7 +384,7 @@ export default function HistoryPage() {
 
                       {/* Status */}
                       <div className={`flex items-center gap-1.5 text-xs font-medium shrink-0 ${
-                        a.status === "posted" ? "text-green-600" : "text-gray-400"
+                        a.status === "posted" ? "text-brand-sage" : "text-gray-400"
                       }`}>
                         {a.status === "posted" ? <CheckCircle size={14} /> : <XCircle size={14} />}
                         <span>{a.status.charAt(0).toUpperCase() + a.status.slice(1)}</span>
@@ -393,7 +393,7 @@ export default function HistoryPage() {
                       {/* Audit trail button */}
                       <button
                         onClick={() => openAuditTrail(a.id, a.period)}
-                        className="p-1.5 text-gray-300 hover:text-indigo-500 transition-colors"
+                        className="p-1.5 text-gray-300 hover:text-brand-500 transition-colors"
                         title="View audit trail"
                       >
                         <Shield size={14} />

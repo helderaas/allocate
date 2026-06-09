@@ -30,8 +30,8 @@ export default function UpgradeWall() {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl border border-gray-200 p-8 max-w-md w-full text-center shadow-sm">
-        <div className="w-14 h-14 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Zap size={28} className="text-indigo-600" />
+        <div className="w-14 h-14 bg-brand-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Zap size={28} className="text-brand-600" />
         </div>
         <h1 className="text-2xl font-semibold text-gray-900 mb-2">Subscribe to Allocate</h1>
         <p className="text-gray-500 text-sm mb-6">
@@ -47,7 +47,7 @@ export default function UpgradeWall() {
             "Volume discounts for multiple companies",
           ].map(feature => (
             <div key={feature} className="flex items-center gap-2 text-sm text-gray-700">
-              <CheckCircle size={15} className="text-green-500 shrink-0" />
+              <CheckCircle size={15} className="text-brand-sage shrink-0" />
               {feature}
             </div>
           ))}
@@ -65,7 +65,7 @@ export default function UpgradeWall() {
         <button
           onClick={handleSubscribe}
           disabled={loading}
-          className="w-full flex items-center justify-center gap-2 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-xl font-medium"
+          className="w-full flex items-center justify-center gap-2 py-3 bg-brand-600 hover:bg-brand-700 disabled:opacity-60 text-white rounded-xl font-medium"
         >
           {loading ? <Loader2 size={18} className="animate-spin" /> : <Zap size={18} />}
           {loading ? "Loading checkout..." : "Start free trial"}

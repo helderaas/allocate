@@ -137,7 +137,7 @@ export default function Nav() {
                 onClick={() => setShowSwitcher(!showSwitcher)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-sm text-gray-700"
               >
-                <Building2 size={14} className={currentCompany?.qbo_connected === false ? "text-gray-400" : "text-indigo-500"} />
+                <Building2 size={14} className={currentCompany?.qbo_connected === false ? "text-gray-400" : "text-brand-500"} />
                 <span className="max-w-32 truncate">{companyLabel}</span>
                 {currentCompany?.qbo_connected === false && (
                   <span className="text-xs text-amber-500 bg-amber-50 px-1 rounded">Disconnected</span>
@@ -151,13 +151,13 @@ export default function Nav() {
                     <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Your companies</p>
                   </div>
                   {companies.map(c => (
-                    <div key={c.id} className={`border-b border-gray-50 last:border-0 ${c.id === currentTenantId ? "bg-indigo-50" : ""}`}>
+                    <div key={c.id} className={`border-b border-gray-50 last:border-0 ${c.id === currentTenantId ? "bg-brand-50" : ""}`}>
                       <div className="flex items-center gap-2.5 px-3 py-2.5">
                         <button onClick={() => switchCompany(c.id)} disabled={switching} className="flex items-center gap-2.5 flex-1 text-left">
-                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${c.id === currentTenantId ? "bg-indigo-100" : "bg-gray-100"}`}>
+                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${c.id === currentTenantId ? "bg-brand-100" : "bg-gray-100"}`}>
                             {c.qbo_connected === false
                               ? <WifiOff size={13} className="text-gray-400" />
-                              : <Building2 size={13} className={c.id === currentTenantId ? "text-indigo-600" : "text-gray-400"} />
+                              : <Building2 size={13} className={c.id === currentTenantId ? "text-brand-600" : "text-gray-400"} />
                             }
                           </div>
                           <div className="flex-1 min-w-0">
@@ -170,7 +170,7 @@ export default function Nav() {
                               )}
                             </p>
                           </div>
-                          {c.id === currentTenantId && <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0" />}
+                          {c.id === currentTenantId && <div className="w-1.5 h-1.5 rounded-full bg-brand-500 shrink-0" />}
                         </button>
 
                         {/* Actions */}
@@ -178,7 +178,7 @@ export default function Nav() {
                           {c.qbo_connected === false ? (
                             <>
                               <button onClick={() => handleReconnect(c)} title="Reconnect QBO"
-                                className="p-1 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 rounded">
+                                className="p-1 text-brand-400 hover:text-brand-600 hover:bg-brand-50 rounded">
                                 <RefreshCw size={13} />
                               </button>
                               <button onClick={() => setConfirmAction({ type: "cancel", company: c })} title="Cancel & delete"
@@ -204,7 +204,7 @@ export default function Nav() {
                   ))}
                   <div className="border-t border-gray-100">
                     <a href={qboAuthUrl.toString()}
-                      className="flex items-center gap-2 px-3 py-2.5 text-sm text-indigo-600 hover:bg-indigo-50 transition-colors">
+                      className="flex items-center gap-2 px-3 py-2.5 text-sm text-brand-600 hover:bg-brand-50 transition-colors">
                       <Plus size={14} /> Connect another company
                     </a>
                   </div>

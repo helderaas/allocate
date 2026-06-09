@@ -14,7 +14,7 @@ export default function SubscriptionCancelPage() {
         </p>
         <button
           onClick={() => window.location.href = "/dashboard"}
-          className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium text-sm"
+          className="px-6 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-medium text-sm"
         >
           Back to dashboard
         </button>

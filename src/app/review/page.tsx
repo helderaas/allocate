@@ -24,9 +24,9 @@ interface EditableLine extends AllocationLine {
 }
 
 const DIVISION_COLORS = [
-  "text-indigo-600",
+  "text-brand-600",
   "text-teal-600",
-  "text-violet-600",
+  "text-brand-600",
   "text-orange-600",
   "text-pink-600",
   "text-sky-600",
@@ -225,14 +225,14 @@ function ReviewContent() {
   if (posted) return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="text-center">
-        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <CheckCircle size={32} className="text-green-600" />
+        <div className="w-16 h-16 bg-brand-200 rounded-full flex items-center justify-center mx-auto mb-4">
+          <CheckCircle size={32} className="text-brand-sage" />
         </div>
         <h2 className="text-xl font-semibold text-gray-900 mb-2">Journal entry posted!</h2>
         <p className="text-gray-500 text-sm mb-6">The allocation has been posted to QuickBooks.</p>
         <button
           onClick={() => window.location.href = "/dashboard"}
-          className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-medium text-sm hover:bg-indigo-700"
+          className="px-6 py-2.5 bg-brand-600 text-white rounded-xl font-medium text-sm hover:bg-brand-700"
         >
           Back to dashboard
         </button>
@@ -269,7 +269,7 @@ function ReviewContent() {
           <div className="flex gap-3 flex-wrap justify-end">
             <button
               onClick={() => { setShowSaveModal(true); setSaveTemplateError(""); setTemplateName(""); }}
-              className="flex items-center gap-2 px-4 py-2.5 border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 rounded-xl text-sm font-medium text-indigo-700"
+              className="flex items-center gap-2 px-4 py-2.5 border border-brand-200 bg-brand-50 hover:bg-brand-100 rounded-xl text-sm font-medium text-brand-700"
             >
               <BookmarkPlus size={16} /> Save configuration
             </button>
@@ -282,7 +282,7 @@ function ReviewContent() {
             <button
               onClick={approve}
               disabled={posting || isLocked}
-              className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-xl font-medium text-sm"
+              className="flex items-center gap-2 px-5 py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-60 text-white rounded-xl font-medium text-sm"
               title={isLocked ? "Unlock this entry from the History page to make changes" : ""}
             >
               {posting ? <Loader2 size={16} className="animate-spin" /> : isLocked ? <Lock size={16} /> : <CheckCircle size={16} />}
@@ -302,7 +302,7 @@ function ReviewContent() {
                 </button>
               </div>
               {templateSaved ? (
-                <div className="flex flex-col items-center py-4 gap-3 text-green-600">
+                <div className="flex flex-col items-center py-4 gap-3 text-brand-sage">
                   <CheckCircle size={32} />
                   <p className="text-sm font-medium">Template saved!</p>
                 </div>
@@ -317,14 +317,14 @@ function ReviewContent() {
                     onChange={e => setTemplateName(e.target.value)}
                     onKeyDown={e => e.key === "Enter" && saveAsTemplate()}
                     placeholder="e.g. Month End Allocation"
-                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 mb-3 focus:outline-none focus:border-indigo-400"
+                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 mb-3 focus:outline-none focus:border-brand-400"
                     autoFocus
                   />
                   {saveTemplateError && <p className="text-xs text-red-500 mb-3">{saveTemplateError}</p>}
                   <button
                     onClick={saveAsTemplate}
                     disabled={savingTemplate}
-                    className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-xl font-medium text-sm flex items-center justify-center gap-2"
+                    className="w-full py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-60 text-white rounded-xl font-medium text-sm flex items-center justify-center gap-2"
                   >
                     {savingTemplate ? <Loader2 size={14} className="animate-spin" /> : <BookmarkPlus size={14} />}
                     {savingTemplate ? "Saving..." : "Save template"}
@@ -385,7 +385,7 @@ function ReviewContent() {
             <div className="flex items-center justify-between mb-1">
               <label className="block text-xs text-gray-500">Default description (applies to all lines)</label>
               <button onClick={applyDescriptionToAll}
-                className="text-xs text-indigo-600 hover:text-indigo-700 font-medium">
+                className="text-xs text-brand-600 hover:text-brand-700 font-medium">
                 Apply to all lines
               </button>
             </div>
@@ -404,7 +404,7 @@ function ReviewContent() {
           </div>
           <div className="bg-white rounded-xl border border-gray-200 p-4">
             <p className="text-xs text-gray-500 mb-1">Total debits</p>
-            <p className="text-2xl font-semibold text-green-600">{fmt(totalDebits)}</p>
+            <p className="text-2xl font-semibold text-brand-sage">{fmt(totalDebits)}</p>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 p-4">
             <p className="text-xs text-gray-500 mb-1">Total credits</p>
@@ -445,7 +445,7 @@ function ReviewContent() {
                             type="text"
                             value={line.description}
                             onChange={e => updateDescription(i, e.target.value)}
-                            className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-indigo-400"
+                            className="w-full text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-brand-400"
                             placeholder="Line description..."
                           />
                         )}
@@ -458,7 +458,7 @@ function ReviewContent() {
                             type="number"
                             value={amount}
                             onChange={e => updateAmount(i, div.id, parseFloat(e.target.value) || 0)}
-                            className="w-full text-xs text-right border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-indigo-400 text-green-600"
+                            className="w-full text-xs text-right border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-brand-400 text-brand-sage"
                           />
                         )}
                       </div>
@@ -468,7 +468,7 @@ function ReviewContent() {
                             type="number"
                             value={amount}
                             onChange={e => updateAmount(i, div.id, parseFloat(e.target.value) || 0)}
-                            className="w-full text-xs text-right border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-indigo-400 text-red-500"
+                            className="w-full text-xs text-right border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-brand-400 text-red-500"
                           />
                         ) : (
                           <span className="text-sm text-right text-gray-300 block">—</span>
@@ -506,8 +506,8 @@ function ReviewContent() {
 
                 {/* Expanded breakdown */}
                 {expandedLines[i] && (
-                  <div className="px-4 py-3 bg-indigo-50 border-t border-indigo-100 space-y-2">
-                    <div className="flex gap-4 flex-wrap text-xs text-indigo-700 mb-2">
+                  <div className="px-4 py-3 bg-brand-50 border-t border-brand-100 space-y-2">
+                    <div className="flex gap-4 flex-wrap text-xs text-brand-700 mb-2">
                       <span>Rule: {line.rule_type === "revenue_pct" ? "Revenue %" : "Fixed split"}</span>
                       {divisions.map((div, di) => {
                         const pct = line.rule_type === "revenue_pct"
@@ -521,11 +521,11 @@ function ReviewContent() {
                       })}
                     </div>
                     <div className="grid grid-cols-3 gap-3">
-                      <div className="bg-white rounded-lg px-3 py-2 border border-indigo-100">
+                      <div className="bg-white rounded-lg px-3 py-2 border border-brand-100">
                         <p className="text-xs text-gray-400 mb-0.5">Total GL balance</p>
                         <p className="text-sm font-semibold text-gray-900">{fmt(line.total_amount ?? 0)}</p>
                       </div>
-                      <div className="bg-white rounded-lg px-3 py-2 border border-indigo-100 col-span-2">
+                      <div className="bg-white rounded-lg px-3 py-2 border border-brand-100 col-span-2">
                         <p className="text-xs text-gray-400 mb-1">Already tagged (not reallocated)</p>
                         <div className="flex gap-3 flex-wrap">
                           {divisions.map((div, di) => {
@@ -543,9 +543,9 @@ function ReviewContent() {
                           })}
                         </div>
                       </div>
-                      <div className="bg-white rounded-lg px-3 py-2 border border-indigo-100 col-span-3">
+                      <div className="bg-white rounded-lg px-3 py-2 border border-brand-100 col-span-3">
                         <p className="text-xs text-gray-400 mb-0.5">Being allocated (untagged)</p>
-                        <p className="text-sm font-semibold text-indigo-600">{fmt(line.untagged_amount ?? 0)}</p>
+                        <p className="text-sm font-semibold text-brand-600">{fmt(line.untagged_amount ?? 0)}</p>
                       </div>
                     </div>
                   </div>

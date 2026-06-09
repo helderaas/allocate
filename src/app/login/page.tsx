@@ -53,26 +53,26 @@ function LoginContent() {
                 <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
                   placeholder="you@example.com"
-                  className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-400" />
+                  className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-brand-400" />
               </div>
             </div>
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-xs font-medium text-gray-700">Password</label>
-                <a href="/forgot-password" className="text-xs text-indigo-600 hover:text-indigo-700">Forgot password?</a>
+                <a href="/forgot-password" className="text-xs text-brand-600 hover:text-brand-700">Forgot password?</a>
               </div>
               <div className="relative">
                 <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input type="password" value={password} onChange={e => setPassword(e.target.value)} required
                   placeholder="••••••••"
-                  className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-400" />
+                  className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-brand-400" />
               </div>
             </div>
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-red-700 text-xs">{error}</div>
             )}
             <button type="submit" disabled={loading}
-              className="w-full flex items-center justify-center gap-2 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-xl font-medium text-sm">
+              className="w-full flex items-center justify-center gap-2 py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-60 text-white rounded-xl font-medium text-sm">
               {loading ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
               {loading ? "Signing in..." : "Sign in"}
             </button>
@@ -81,7 +81,7 @@ function LoginContent() {
 
         <p className="text-center text-sm text-gray-500 mt-4">
           Don&apos;t have an account?{" "}
-          <a href="/signup" className="text-indigo-600 hover:text-indigo-700 font-medium">Sign up</a>
+          <a href="/signup" className="text-brand-600 hover:text-brand-700 font-medium">Sign up</a>
         </p>
       </div>
     </div>

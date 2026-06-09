@@ -23,7 +23,7 @@ export default async function LandingPage() {
             Sign in
           </Link>
           <Link href="/signup"
-            className="text-sm px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors">
+            className="text-sm px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-lg font-medium transition-colors">
             Start free trial
           </Link>
         </div>
@@ -31,7 +31,7 @@ export default async function LandingPage() {
 
       {/* Hero */}
       <section className="max-w-6xl mx-auto px-6 pt-20 pb-16 text-center">
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-full text-xs font-medium mb-6">
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-brand-50 text-brand-700 rounded-full text-xs font-medium mb-6">
           ✦ Built for multi-division, multi-location companies
         </div>
         <h1 className="text-5xl font-bold text-gray-900 leading-tight mb-6 max-w-3xl mx-auto">
@@ -42,7 +42,7 @@ export default async function LandingPage() {
         </p>
         <div className="flex items-center justify-center gap-4 flex-wrap">
           <Link href="/signup"
-            className="px-8 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-base transition-colors shadow-sm">
+            className="px-8 py-3.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-semibold text-base transition-colors shadow-sm">
             Start 14-day free trial
           </Link>
           <Link href="/login"
@@ -68,7 +68,7 @@ export default async function LandingPage() {
               { step: "4", title: "Review & post", desc: "Review the journal entry, make any adjustments, then post directly to QuickBooks with one click." },
             ].map(item => (
               <div key={item.step} className="text-center">
-                <div className="w-10 h-10 bg-indigo-600 text-white rounded-full flex items-center justify-center font-bold text-lg mx-auto mb-4">
+                <div className="w-10 h-10 bg-brand-600 text-white rounded-full flex items-center justify-center font-bold text-lg mx-auto mb-4">
                   {item.step}
                 </div>
                 <h3 className="font-semibold text-gray-900 mb-2">{item.title}</h3>
@@ -118,7 +118,7 @@ export default async function LandingPage() {
               desc: "Accounting firms can manage multiple client companies under one login with a simple company switcher.",
             },
           ].map(feature => (
-            <div key={feature.title} className="p-6 rounded-2xl border border-gray-100 hover:border-indigo-100 hover:bg-indigo-50/30 transition-colors">
+            <div key={feature.title} className="p-6 rounded-2xl border border-gray-100 hover:border-brand-100 hover:bg-brand-50/30 transition-colors">
               <div className="text-3xl mb-3">{feature.icon}</div>
               <h3 className="font-semibold text-gray-900 mb-2">{feature.title}</h3>
               <p className="text-sm text-gray-500 leading-relaxed">{feature.desc}</p>
@@ -128,10 +128,10 @@ export default async function LandingPage() {
       </section>
 
       {/* Who it's for */}
-      <section className="bg-indigo-600 py-16">
+      <section className="bg-brand-600 py-16">
         <div className="max-w-4xl mx-auto px-6 text-center">
           <h2 className="text-3xl font-bold text-white mb-4">Built for multi-division, multi-location companies</h2>
-          <p className="text-indigo-200 text-lg mb-8 max-w-2xl mx-auto">
+          <p className="text-brand-200 text-lg mb-8 max-w-2xl mx-auto">
             Perfect for any company operating multiple divisions, locations, or service lines under one QuickBooks company — from professional services to retail, healthcare to hospitality.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
@@ -142,7 +142,7 @@ export default async function LandingPage() {
             ].map(item => (
               <div key={item.title} className="bg-white/10 rounded-xl p-5">
                 <h3 className="font-semibold text-white mb-2">{item.title}</h3>
-                <p className="text-indigo-200 text-sm leading-relaxed">{item.desc}</p>
+                <p className="text-brand-200 text-sm leading-relaxed">{item.desc}</p>
               </div>
             ))}
           </div>
@@ -179,7 +179,7 @@ export default async function LandingPage() {
                 "Email support",
               ].map(f => (
                 <div key={f} className="flex items-center gap-2 text-sm text-gray-700">
-                  <span className="text-green-500">✓</span> {f}
+                  <span className="text-brand-sage">✓</span> {f}
                 </div>
               ))}
             </div>
@@ -200,7 +200,7 @@ export default async function LandingPage() {
               </div>
             </div>
             <Link href="/signup"
-              className="block w-full text-center py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold transition-colors">
+              className="block w-full text-center py-3.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-semibold transition-colors">
               Start free 14-day trial
             </Link>
             <p className="text-center text-xs text-gray-400 mt-3">No credit card required during trial</p>
@@ -214,7 +214,7 @@ export default async function LandingPage() {
           <h2 className="text-3xl font-bold text-gray-900 mb-4">Ready to automate your month-end close?</h2>
           <p className="text-gray-500 mb-8">Connect your QuickBooks account and run your first allocation in under 5 minutes.</p>
           <Link href="/signup"
-            className="inline-block px-8 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-base transition-colors shadow-sm">
+            className="inline-block px-8 py-3.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-semibold text-base transition-colors shadow-sm">
             Get started free
           </Link>
         </div>

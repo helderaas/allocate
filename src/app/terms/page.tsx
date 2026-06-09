@@ -5,7 +5,7 @@ export default function TermsOfServicePage() {
     <div className="min-h-screen bg-white">
       <nav className="border-b border-gray-200 px-6 py-3 flex items-center justify-between">
         <Link href="/" className="font-semibold text-gray-900">Allocate</Link>
-        <Link href="/login" className="text-sm text-indigo-600 hover:text-indigo-700">Sign in</Link>
+        <Link href="/login" className="text-sm text-brand-600 hover:text-brand-700">Sign in</Link>
       </nav>
 
       <div className="max-w-3xl mx-auto px-6 py-12">
@@ -79,7 +79,7 @@ export default function TermsOfServicePage() {
 
           <section>
             <h2 className="text-xl font-semibold text-gray-900 mb-3">7. Data and Privacy</h2>
-            <p>Your use of the Service is also governed by our <Link href="/privacy" className="text-indigo-600 hover:text-indigo-700">Privacy Policy</Link>, which is incorporated into these Terms by reference. You retain ownership of all data you input into or connect to the Service. You grant Allocate a limited license to access and process your data solely to provide the Service.</p>
+            <p>Your use of the Service is also governed by our <Link href="/privacy" className="text-brand-600 hover:text-brand-700">Privacy Policy</Link>, which is incorporated into these Terms by reference. You retain ownership of all data you input into or connect to the Service. You grant Allocate a limited license to access and process your data solely to provide the Service.</p>
           </section>
 
           <section>
@@ -125,7 +125,7 @@ export default function TermsOfServicePage() {
             <div className="mt-2 p-4 bg-gray-50 rounded-xl text-sm">
               <p className="font-medium">Allocate LLC</p>
               <p>Athens, Georgia</p>
-              <p><a href="mailto:privacy@allocateapp.net" className="text-indigo-600 hover:text-indigo-700">privacy@allocateapp.net</a></p>
+              <p><a href="mailto:privacy@allocateapp.net" className="text-brand-600 hover:text-brand-700">privacy@allocateapp.net</a></p>
             </div>
           </section>
 

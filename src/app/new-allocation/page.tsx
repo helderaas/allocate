@@ -253,8 +253,8 @@ function NewAllocationContent() {
           {stepOrder.map((s, i) => (
             <div key={s} className="flex items-center gap-2">
               <div className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full ${
-                i < currentStepIndex ? "bg-green-100 text-green-700" :
-                i === currentStepIndex ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-400"
+                i < currentStepIndex ? "bg-brand-200 text-brand-sage" :
+                i === currentStepIndex ? "bg-brand-600 text-white" : "bg-gray-100 text-gray-400"
               }`}>
                 {i < currentStepIndex && <CheckCircle2 size={12} />}
                 {stepLabels[s]}
@@ -287,8 +287,8 @@ function NewAllocationContent() {
                   onClick={() => setTrackingType("location")}
                   className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-colors ${
                     trackingType === "location"
-                      ? "bg-indigo-600 text-white border-indigo-600"
-                      : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300"
+                      ? "bg-brand-600 text-white border-brand-600"
+                      : "bg-white text-gray-600 border-gray-200 hover:border-brand-300"
                   }`}
                 >
                   Location / Department
@@ -297,8 +297,8 @@ function NewAllocationContent() {
                   onClick={() => setTrackingType("class")}
                   className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-colors ${
                     trackingType === "class"
-                      ? "bg-indigo-600 text-white border-indigo-600"
-                      : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300"
+                      ? "bg-brand-600 text-white border-brand-600"
+                      : "bg-white text-gray-600 border-gray-200 hover:border-brand-300"
                   }`}
                 >
                   Class
@@ -345,7 +345,7 @@ function NewAllocationContent() {
 
             <button
               onClick={addDivision}
-              className="flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-700 font-medium mb-6"
+              className="flex items-center gap-1.5 text-sm text-brand-600 hover:text-brand-700 font-medium mb-6"
             >
               <Plus size={14} /> Add another {trackingType === "location" ? "location" : "class"}
             </button>
@@ -353,7 +353,7 @@ function NewAllocationContent() {
             <button
               disabled={!canProceedDivisions}
               onClick={() => setStep("accounts")}
-              className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white rounded-xl font-medium text-sm flex items-center justify-center gap-2"
+              className="w-full py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-40 text-white rounded-xl font-medium text-sm flex items-center justify-center gap-2"
             >
               Next: pick accounts <ChevronRight size={16} />
             </button>
@@ -365,7 +365,7 @@ function NewAllocationContent() {
           <div className="bg-white rounded-2xl border border-gray-200 p-6">
             <h2 className="font-medium text-gray-900 mb-1">Select shared expense accounts</h2>
             {selectedAccounts.length > 0 && (
-              <p className="text-xs text-indigo-600 font-medium mb-3">
+              <p className="text-xs text-brand-600 font-medium mb-3">
                 {selectedAccounts.length} account{selectedAccounts.length !== 1 ? "s" : ""} selected
               </p>
             )}
@@ -379,15 +379,15 @@ function NewAllocationContent() {
                 const selected = selectedAccounts.some(s => s.account.Id === acct.Id);
                 return (
                   <button key={acct.Id} onClick={() => toggleAccount(acct)}
-                    className={"w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors " + (selected ? "bg-indigo-50" : "hover:bg-gray-50")}>
-                    {selected ? <CheckSquare size={18} className="text-indigo-600 shrink-0" /> : <Square size={18} className="text-gray-300 shrink-0" />}
+                    className={"w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors " + (selected ? "bg-brand-50" : "hover:bg-gray-50")}>
+                    {selected ? <CheckSquare size={18} className="text-brand-600 shrink-0" /> : <Square size={18} className="text-gray-300 shrink-0" />}
                     <div className="min-w-0">
                       <p className={"text-sm font-medium truncate " + (acct.SubAccount ? "pl-3 text-gray-600" : "text-gray-900")}>
                         {acct.SubAccount ? "↳ " : ""}{acct.FullyQualifiedName}
                       </p>
                       <p className="text-xs text-gray-400">{acct.AccountType}</p>
                     </div>
-                    {selected && <CheckCircle2 size={14} className="text-indigo-400 shrink-0 ml-auto" />}
+                    {selected && <CheckCircle2 size={14} className="text-brand-400 shrink-0 ml-auto" />}
                   </button>
                 );
               })}
@@ -398,7 +398,7 @@ function NewAllocationContent() {
                 <ChevronLeft size={16} /> Back
               </button>
               <button disabled={selectedAccounts.length === 0} onClick={() => setStep("splits")}
-                className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white rounded-xl font-medium text-sm flex items-center justify-center gap-2">
+                className="flex-1 py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-40 text-white rounded-xl font-medium text-sm flex items-center justify-center gap-2">
                 {selectedAccounts.length} selected — set rules <ChevronRight size={16} />
               </button>
             </div>
@@ -451,7 +451,7 @@ function NewAllocationContent() {
                                       : a
                                   ));
                                 }}
-                                className="w-12 text-xs text-center border border-gray-200 rounded-lg px-1 py-1.5 focus:outline-none focus:border-indigo-400"
+                                className="w-12 text-xs text-center border border-gray-200 rounded-lg px-1 py-1.5 focus:outline-none focus:border-brand-400"
                               />
                             )}
                             <span className="text-xs text-gray-400">%</span>
@@ -475,7 +475,7 @@ function NewAllocationContent() {
                 <ChevronLeft size={16} /> Back
               </button>
               <button onClick={() => setStep("dates")}
-                className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium text-sm flex items-center justify-center gap-2">
+                className="flex-1 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-medium text-sm flex items-center justify-center gap-2">
                 Next: choose dates <ChevronRight size={16} />
               </button>
             </div>
@@ -486,13 +486,13 @@ function NewAllocationContent() {
         {step === "dates" && (
           <div className="bg-white rounded-2xl border border-gray-200 p-6">
             <h2 className="font-medium text-gray-900 mb-4 flex items-center gap-2">
-              <Calendar size={18} className="text-indigo-500" /> Choose period
+              <Calendar size={18} className="text-brand-500" /> Choose period
             </h2>
             <div className="flex gap-2 mb-4">
               {(["last_month", "this_month", "custom"] as DatePreset[]).map(p => (
                 <button key={p} onClick={() => setDatePreset(p)}
                   className={"px-4 py-1.5 rounded-lg text-sm font-medium border transition-colors " +
-                    (datePreset === p ? "bg-indigo-600 text-white border-indigo-600" : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300")}>
+                    (datePreset === p ? "bg-brand-600 text-white border-brand-600" : "bg-white text-gray-600 border-gray-200 hover:border-brand-300")}>
                   {p === "last_month" ? "Last Month" : p === "this_month" ? "This Month" : "Custom"}
                 </button>
               ))}
@@ -512,7 +512,7 @@ function NewAllocationContent() {
               </div>
             </div>
             <button onClick={() => setShowDateOptions(!showDateOptions)}
-              className="text-xs text-indigo-600 hover:text-indigo-700 font-medium mb-3 block">
+              className="text-xs text-brand-600 hover:text-brand-700 font-medium mb-3 block">
               {showDateOptions ? "Hide options" : "Show options (JE date, memo, journal number)"}
             </button>
             {showDateOptions && (
@@ -546,7 +546,7 @@ function NewAllocationContent() {
                 <ChevronLeft size={16} /> Back
               </button>
               <button onClick={saveConfigAndRun} disabled={running || !startDate || !endDate}
-                className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl font-medium text-sm flex items-center justify-center gap-2">
+                className="flex-1 py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white rounded-xl font-medium text-sm flex items-center justify-center gap-2">
                 {running ? <><Loader2 size={16} className="animate-spin" /> Calculating...</> : <><ArrowRight size={16} /> Run {periodLabel}</>}
               </button>
             </div>

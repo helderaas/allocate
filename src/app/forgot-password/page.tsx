@@ -35,14 +35,14 @@ function ForgotPasswordContent() {
   if (sent) return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-sm text-center">
-        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <CheckCircle size={32} className="text-green-600" />
+        <div className="w-16 h-16 bg-brand-200 rounded-full flex items-center justify-center mx-auto mb-4">
+          <CheckCircle size={32} className="text-brand-sage" />
         </div>
         <h2 className="text-xl font-semibold text-gray-900 mb-2">Check your email</h2>
         <p className="text-gray-500 text-sm mb-6">
           If an account exists for <strong>{email}</strong>, we sent a reset link.
         </p>
-        <a href="/login" className="text-indigo-600 text-sm font-medium hover:text-indigo-700">
+        <a href="/login" className="text-brand-600 text-sm font-medium hover:text-brand-700">
           Back to sign in
         </a>
       </div>
@@ -67,7 +67,7 @@ function ForgotPasswordContent() {
                 <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
                   placeholder="you@example.com"
-                  className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-400"
+                  className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-brand-400"
                   autoFocus />
               </div>
             </div>
@@ -77,7 +77,7 @@ function ForgotPasswordContent() {
               </div>
             )}
             <button type="submit" disabled={loading}
-              className="w-full flex items-center justify-center gap-2 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-xl font-medium text-sm">
+              className="w-full flex items-center justify-center gap-2 py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-60 text-white rounded-xl font-medium text-sm">
               {loading ? <Loader2 size={16} className="animate-spin" /> : <Mail size={16} />}
               {loading ? "Sending..." : "Send reset link"}
             </button>
