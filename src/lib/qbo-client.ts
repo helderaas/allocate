@@ -123,7 +123,7 @@ interface GLRow {
   group?: string;
 }
 
-function sumGLSections(rows: GLRow[], debug = false): number {
+function sumGLSections(rows: GLRow[]): number {
   let total = 0;
   for (const row of rows) {
     if (row.type === "Section" && row.group !== "GrandTotal") {
@@ -131,12 +131,15 @@ function sumGLSections(rows: GLRow[], debug = false): number {
         (r) => (r as GLRow).type === "Section" && (r as GLRow).group !== "GrandTotal"
       );
       if (!hasNestedSections && row.Summary?.ColData) {
-        if (debug) console.log("GL Summary ColData:", JSON.stringify(row.Summary.ColData));
-        const val = parseFloat(row.Summary.ColData[6]?.value || "0") || 0;
+        // Find the amount column - try index 7 first (production), fall back to 6 (sandbox)
+        const colData = row.Summary.ColData;
+        const val7 = parseFloat(colData[7]?.value || "0") || 0;
+        const val6 = parseFloat(colData[6]?.value || "0") || 0;
+        const val = val7 !== 0 ? val7 : val6;
         total += val;
       }
       if (row.Rows?.Row?.length) {
-        total += sumGLSections(row.Rows.Row, debug);
+        total += sumGLSections(row.Rows.Row);
       }
     }
   }
@@ -215,7 +218,7 @@ export async function fetchGLBalances(
         }),
       ]);
 
-      const total = sumGLSections(glTotal?.Rows?.Row ?? [], true); // debug first run
+      const total = sumGLSections(glTotal?.Rows?.Row ?? []);
       const taggedPerDivision: Record<string, number> = {};
       let totalTagged = 0;
 
