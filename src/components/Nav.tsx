@@ -116,7 +116,7 @@ export default function Nav() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 truncate">
-                        {c.company_name ?? c.division_a_location_name ?? "Company"}
+                        {c.company_name ?? c.division_a_location_name ?? "Unnamed Company"}
                       </p>
                       <p className="text-xs text-gray-400 truncate">
                         {c.division_a_location_name && c.division_b_location_name

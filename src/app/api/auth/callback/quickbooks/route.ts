@@ -59,9 +59,14 @@ export async function GET(req: NextRequest) {
     );
 
     // Fetch company name from QBO
-    const companyInfo = await fetchCompanyInfo(
-      "temp", realmId, tokens.access_token, tokens.refresh_token
-    );
+    let companyInfo = null;
+    try {
+      companyInfo = await fetchCompanyInfo(
+        "temp", realmId, tokens.access_token, tokens.refresh_token
+      );
+    } catch (e) {
+      console.error("fetchCompanyInfo failed (non-fatal):", e);
+    }
 
     // Upsert tenant with company name
     const { data: tenant, error } = await db
