@@ -1,6 +1,13 @@
 import { AllocationRule, AllocationLine, AllocationDraft } from "@/types";
 import { GLBreakdown, Division } from "./qbo-client";
 
+// Income account types should credit divisions and debit the offset (opposite of expenses)
+const INCOME_ACCOUNT_TYPES = new Set(["Income", "Other Income"]);
+
+export function isIncomeAccount(accountType?: string): boolean {
+  return !!accountType && INCOME_ACCOUNT_TYPES.has(accountType);
+}
+
 interface RevenueData {
   [divisionId: string]: number; // divisionId -> percentage
 }
@@ -67,6 +74,7 @@ export function calculateAllocationLines(
     return {
       account_id: rule.qbo_account_id,
       account_name: rule.qbo_account_name,
+      account_type: rule.account_type,
       rule_type: rule.rule_type,
       division_a_pct: revenueSplit[divisions[0]?.id] ?? (rule.fixed_pct_division_a ?? 50),
       division_b_pct: revenueSplit[divisions[1]?.id] ?? (100 - (rule.fixed_pct_division_a ?? 50)),
@@ -76,7 +84,6 @@ export function calculateAllocationLines(
       untagged_amount: untagged,
       division_a_amount: divAAmount,
       division_b_amount: divBAmount,
-      // New N-division fields
       division_amounts: divisionAmounts,
     } as AllocationLine & { division_amounts: Record<string, number> };
   });
@@ -109,12 +116,17 @@ export function buildJournalEntryPayload(
 
     if (untaggedTotal === 0) return [];
 
+    // Income accounts: credit divisions, debit offset (opposite of expenses)
+    const income = isIncomeAccount(line.account_type);
+    const divisionPostingType = income ? "Credit" : "Debit";
+    const offsetPostingType = income ? "Debit" : "Credit";
+
     const debitLines = divisions
       .filter(div => (divisionAmounts[div.id] ?? 0) > 0)
       .map((div, j) => {
         const filterId = trackingType === "class" ? div.qbo_class_id : div.qbo_location_id;
         const lineDetail: Record<string, unknown> = {
-          PostingType: "Debit",
+          PostingType: divisionPostingType,
           AccountRef: { value: line.account_id },
         };
         if (filterId) {
@@ -140,7 +152,7 @@ export function buildJournalEntryPayload(
       Amount: untaggedTotal,
       DetailType: "JournalEntryLineDetail",
       JournalEntryLineDetail: {
-        PostingType: "Credit",
+        PostingType: offsetPostingType,
         AccountRef: { value: line.account_id },
       },
     };

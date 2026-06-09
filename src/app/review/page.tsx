@@ -2,6 +2,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { AllocationDraft, AllocationLine } from "@/types";
+import { isIncomeAccount } from "@/lib/allocation-engine";
 import {
   CheckCircle, XCircle, Loader2, ArrowLeft,
   ChevronDown, ChevronUp, BookmarkPlus, X, Lock, AlertCircle,
@@ -418,8 +419,8 @@ function ReviewContent() {
             <span className="col-span-3">Account</span>
             <span className="col-span-2">Location</span>
             <span className="col-span-4">Description</span>
-            <span className="col-span-1 text-right">Debit</span>
-            <span className="col-span-1 text-right">Credit</span>
+            <span className="col-span-1 text-right">{isIncomeAccount(line.account_type) ? "Credit" : "Debit"}</span>
+            <span className="col-span-1 text-right">{isIncomeAccount(line.account_type) ? "Debit" : "Credit"}</span>
             <span className="col-span-1"></span>
           </div>
 
@@ -475,7 +476,7 @@ function ReviewContent() {
                 {/* Credit row — untagged offset, no location */}
                 <div className="grid grid-cols-12 gap-2 px-4 py-2.5 items-center bg-gray-100/60">
                   <span className="col-span-3 text-sm font-medium text-gray-900 truncate">{line.account_name}</span>
-                  <span className="col-span-2 text-xs text-gray-400 italic">Untagged offset</span>
+                  <span className="col-span-2 text-xs text-gray-400 italic">{isIncomeAccount(line.account_type) ? "Untagged debit offset" : "Untagged offset"}</span>
                   <div className="col-span-4">
                     <span className="text-xs text-gray-400">{line.description}</span>
                   </div>

@@ -173,6 +173,7 @@ function NewAllocationContent() {
           qbo_account_id: s.account.Id,
           qbo_account_name: s.account.FullyQualifiedName,
           rule_type: s.ruleType,
+          account_type: s.account.AccountType,
           fixed_pct_map: s.ruleType === "fixed_split" ? s.fixedPctMap : null,
           fixed_pct_division_a: s.ruleType === "fixed_split"
             ? (s.fixedPctMap[selectedDivisions[0]?.id] ?? 50)

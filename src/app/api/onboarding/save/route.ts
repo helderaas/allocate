@@ -19,11 +19,12 @@ export async function POST(req: NextRequest) {
     // Delete ALL existing rules for this tenant first, then insert fresh
     await db.from("allocation_rules").delete().eq("tenant_id", tenantId);
 
-    const rows = rules.map((r: { qbo_account_id: string; qbo_account_name: string; rule_type: string; fixed_pct_division_a: number; fixed_pct_map?: Record<string, number> }) => ({
+    const rows = rules.map((r: { qbo_account_id: string; qbo_account_name: string; rule_type: string; fixed_pct_division_a: number; fixed_pct_map?: Record<string, number>; account_type?: string }) => ({
       tenant_id: tenantId,
       qbo_account_id: r.qbo_account_id,
       qbo_account_name: r.qbo_account_name,
       rule_type: r.rule_type,
+      account_type: r.account_type ?? null,
       fixed_pct_division_a: r.rule_type === "fixed_split" ? r.fixed_pct_division_a : null,
       fixed_pct_map: r.rule_type === "fixed_split" ? (r.fixed_pct_map ?? null) : null,
     }));

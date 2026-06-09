@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
 
   const { data: rules } = await db
     .from("allocation_rules")
-    .select("qbo_account_id, qbo_account_name, rule_type, fixed_pct_division_a, fixed_pct_map")
+    .select("qbo_account_id, qbo_account_name, rule_type, fixed_pct_division_a, fixed_pct_map, account_type")
     .eq("tenant_id", tenantId)
     .order("qbo_account_name", { ascending: true });
 
