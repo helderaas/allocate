@@ -419,8 +419,8 @@ function ReviewContent() {
             <span className="col-span-3">Account</span>
             <span className="col-span-2">Location</span>
             <span className="col-span-4">Description</span>
-            <span className="col-span-1 text-right">{isIncomeAccount(line.account_type) ? "Credit" : "Debit"}</span>
-            <span className="col-span-1 text-right">{isIncomeAccount(line.account_type) ? "Debit" : "Credit"}</span>
+            <span className="col-span-1 text-right">Debit</span>
+            <span className="col-span-1 text-right">Credit</span>
             <span className="col-span-1"></span>
           </div>
 
