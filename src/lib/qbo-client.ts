@@ -52,9 +52,12 @@ export async function refreshQBOToken(tenantId: string, refreshToken: string): P
   }
 }
 
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 export async function qboRequest<T>(
   tenantId: string, realmId: string, accessToken: string, refreshToken: string,
-  path: string, params?: Record<string, string>
+  path: string, params?: Record<string, string>,
+  retries = 3
 ): Promise<T> {
   const base = `${QBO_BASE[env]}/v3/company/${realmId}`;
   try {
@@ -64,13 +67,24 @@ export async function qboRequest<T>(
     });
     return data;
   } catch (err: unknown) {
-    if (axios.isAxiosError(err) && err.response?.status === 401) {
-      const newTokens = await refreshQBOToken(tenantId, refreshToken);
-      const { data } = await axios.get<T>(`${base}${path}`, {
-        headers: { Authorization: `Bearer ${newTokens.access_token}`, Accept: "application/json" },
-        params,
-      });
-      return data;
+    if (axios.isAxiosError(err)) {
+      // 401 — refresh token and retry once
+      if (err.response?.status === 401) {
+        const newTokens = await refreshQBOToken(tenantId, refreshToken);
+        const { data } = await axios.get<T>(`${base}${path}`, {
+          headers: { Authorization: `Bearer ${newTokens.access_token}`, Accept: "application/json" },
+          params,
+        });
+        return data;
+      }
+      // 429 — rate limited, wait and retry with exponential backoff
+      if (err.response?.status === 429 && retries > 0) {
+        const retryAfter = parseInt(err.response.headers["retry-after"] ?? "2") * 1000;
+        const delay = retryAfter || (2 ** (3 - retries)) * 1000; // 1s, 2s, 4s
+        console.log(`QBO rate limited, retrying in ${delay}ms (${retries} retries left)`);
+        await sleep(delay);
+        return qboRequest<T>(tenantId, realmId, accessToken, refreshToken, path, params, retries - 1);
+      }
     }
     throw err;
   }
@@ -189,8 +203,12 @@ export async function fetchGLBalances(
 ): Promise<Record<string, GLBreakdown>> {
   const results: Record<string, GLBreakdown> = {};
 
-  await Promise.all(
-    accountIds.map(async (accountId) => {
+  // Process accounts in batches of 3 to avoid QBO rate limits
+  const BATCH_SIZE = 3;
+  for (let i = 0; i < accountIds.length; i += BATCH_SIZE) {
+    const batch = accountIds.slice(i, i + BATCH_SIZE);
+    await Promise.all(
+      batch.map(async (accountId) => {
       const baseParams = {
         start_date: startDate,
         end_date: endDate,
@@ -231,7 +249,10 @@ export async function fetchGLBalances(
       const untagged = Math.max(0, total - totalTagged);
       results[accountId] = { total, taggedPerDivision, untagged };
     })
-  );
+    );
+    // Small delay between batches to avoid rate limiting
+    if (i + BATCH_SIZE < accountIds.length) await sleep(300);
+  }
 
   return results;
 }
