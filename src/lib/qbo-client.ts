@@ -276,7 +276,14 @@ function sumIncomeFromPL(rows: PLRow[], insideIncome = false): number {
     const nowInsideIncome = insideIncome || isIncomeSection;
 
     if (nowInsideIncome && row.type === "Data" && row.ColData && row.ColData.length >= 2) {
-      const val = parseFloat(row.ColData[1]?.value || "0") || 0;
+      // Try the last non-empty numeric column (production may have different column count than sandbox)
+      let val = 0;
+      for (let i = row.ColData.length - 1; i >= 1; i--) {
+        const parsed = parseFloat(row.ColData[i]?.value || "0");
+        if (!isNaN(parsed) && parsed !== 0) { val = parsed; break; }
+        // Accept zero only if it's the only value
+        if (!isNaN(parsed) && i === 1) val = parsed;
+      }
       total += val;
     }
     if (row.Rows?.Row?.length) {
@@ -315,6 +322,7 @@ export async function fetchRevenueSplit(
   const revenues = plResults.map(pl =>
     Math.abs(sumIncomeFromPL((pl?.Report?.Rows?.Row ?? []) as PLRow[]))
   );
+  console.log("Revenue split fetch — revenues:", revenues, "total:", revenues.reduce((s, r) => s + r, 0));
   const totalRevenue = revenues.reduce((sum, r) => sum + r, 0);
 
   // Fall back to equal split if no revenue data
