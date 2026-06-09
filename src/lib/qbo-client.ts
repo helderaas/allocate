@@ -326,7 +326,10 @@ export async function fetchRevenueSplit(
 
   const revenues = plResults.map((pl, i) => {
     // Production API returns report directly, sandbox wraps in { Report: ... }
-    const rows = ((pl as unknown as PLReport)?.Rows?.Row ?? pl?.Report?.Rows?.Row ?? []) as PLRow[];
+    const plAny = pl as unknown as Record<string, unknown>;
+    const rows = ((plAny?.Rows as { Row?: PLRow[] })?.Row
+      ?? (plAny?.Report as { Rows?: { Row?: PLRow[] } })?.Rows?.Row
+      ?? []) as PLRow[];
     console.log(`Division ${i} income rows count:`, rows.length);
     return Math.abs(sumIncomeFromPL(rows));
   });
