@@ -319,9 +319,11 @@ export async function fetchRevenueSplit(
     })
   );
 
-  const revenues = plResults.map(pl =>
-    Math.abs(sumIncomeFromPL((pl?.Report?.Rows?.Row ?? []) as PLRow[]))
-  );
+  const revenues = plResults.map((pl, i) => {
+    const rows = (pl?.Report?.Rows?.Row ?? []) as PLRow[];
+    console.log(`Division ${i} P&L rows:`, JSON.stringify(rows).slice(0, 1000));
+    return Math.abs(sumIncomeFromPL(rows));
+  });
   console.log("Revenue split fetch — revenues:", revenues, "total:", revenues.reduce((s, r) => s + r, 0));
   const totalRevenue = revenues.reduce((sum, r) => sum + r, 0);
 
