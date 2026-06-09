@@ -59,9 +59,12 @@ export async function POST(req: NextRequest) {
         items.push({ price: process.env.STRIPE_ARCHIVE_PRICE_ID!, quantity: 1 });
       }
 
-      await stripe.subscriptions.update(firm.stripe_subscription_id, { items } as Parameters<typeof stripe.subscriptions.update>[1]);
+      if (items.length > 0) {
+        await stripe.subscriptions.update(firm.stripe_subscription_id, { items } as Parameters<typeof stripe.subscriptions.update>[1]);
+      }
     } catch (e) {
       console.error("Stripe update failed (non-fatal):", e);
+      // Continue regardless — disconnect should always work
     }
   }
 
