@@ -317,8 +317,12 @@ export async function fetchRevenueSplit(
         "/reports/ProfitAndLoss",
         { start_date: startDate, end_date: endDate, accounting_method: "Accrual", ...filterParam }
       ).then(result => {
-        console.log(`Division ${div.name} raw P&L:`, JSON.stringify(result?.Report?.Rows).slice(0, 500));
+        const raw = JSON.stringify(result ?? {});
+        console.log(`Division ${div.name} raw P&L (first 800):`, raw.slice(0, 800));
         return result;
+      }).catch(err => {
+        console.error(`Division ${div.name} P&L error:`, err?.response?.data ?? err?.message);
+        return { Report: { Rows: { Row: [] } } } as { Report: PLReport };
       });
     })
   );
