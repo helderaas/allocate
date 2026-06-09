@@ -311,11 +311,15 @@ export async function fetchRevenueSplit(
       const filterId = trackingType === "class" ? div.qbo_class_id : div.qbo_location_id;
       if (!filterId) return Promise.resolve({ Report: { Rows: { Row: [] } } });
       const filterParam: Record<string, string> = trackingType === "class" ? { class: filterId } : { department: filterId };
+      console.log(`Division ${div.name} P&L params:`, { start_date: startDate, end_date: endDate, ...filterParam });
       return qboRequest<{ Report: PLReport }>(
         tenantId, realmId, accessToken, refreshToken,
         "/reports/ProfitAndLoss",
         { start_date: startDate, end_date: endDate, accounting_method: "Accrual", ...filterParam }
-      );
+      ).then(result => {
+        console.log(`Division ${div.name} raw P&L:`, JSON.stringify(result?.Report?.Rows).slice(0, 500));
+        return result;
+      });
     })
   );
 
