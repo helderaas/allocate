@@ -451,14 +451,29 @@ function ReviewContent() {
                         )}
                       </div>
                       <div className="col-span-1">
-                        <input
-                          type="number"
-                          value={amount}
-                          onChange={e => updateAmount(i, div.id, parseFloat(e.target.value) || 0)}
-                          className="w-full text-xs text-right border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-indigo-400 text-green-600"
-                        />
+                        {isIncomeAccount(line.account_type) ? (
+                          <span className="w-full text-xs text-right block text-gray-300">—</span>
+                        ) : (
+                          <input
+                            type="number"
+                            value={amount}
+                            onChange={e => updateAmount(i, div.id, parseFloat(e.target.value) || 0)}
+                            className="w-full text-xs text-right border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-indigo-400 text-green-600"
+                          />
+                        )}
                       </div>
-                      <span className="col-span-1 text-sm text-right text-gray-300">—</span>
+                      <div className="col-span-1">
+                        {isIncomeAccount(line.account_type) ? (
+                          <input
+                            type="number"
+                            value={amount}
+                            onChange={e => updateAmount(i, div.id, parseFloat(e.target.value) || 0)}
+                            className="w-full text-xs text-right border border-gray-200 rounded px-2 py-1 focus:outline-none focus:border-indigo-400 text-red-500"
+                          />
+                        ) : (
+                          <span className="text-sm text-right text-gray-300 block">—</span>
+                        )}
+                      </div>
                       {di === 0 ? (
                         <button
                           onClick={() => toggleLine(i)}
@@ -480,9 +495,11 @@ function ReviewContent() {
                   <div className="col-span-4">
                     <span className="text-xs text-gray-400">{line.description}</span>
                   </div>
-                  <span className="col-span-1 text-sm text-right text-gray-300">—</span>
-                  <span className="col-span-1 text-xs text-right text-red-500 font-medium pr-1">
-                    {creditAmount.toFixed(2)}
+                  <span className="col-span-1 text-sm text-right text-gray-300">
+                    {isIncomeAccount(line.account_type) ? creditAmount.toFixed(2) : "—"}
+                  </span>
+                  <span className={`col-span-1 text-xs text-right font-medium pr-1 ${isIncomeAccount(line.account_type) ? "text-gray-300" : "text-red-500"}`}>
+                    {isIncomeAccount(line.account_type) ? "—" : creditAmount.toFixed(2)}
                   </span>
                   <span className="col-span-1" />
                 </div>
