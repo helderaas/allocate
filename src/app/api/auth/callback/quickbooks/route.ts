@@ -8,6 +8,11 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const code = searchParams.get("code");
   const realmId = searchParams.get("realmId");
+  const state = searchParams.get("state") ?? "";
+
+  // Check if this is a reconnect for an existing tenant
+  const isReconnect = state.startsWith("reconnect_");
+  const reconnectTenantId = isReconnect ? state.replace("reconnect_", "") : null;
 
   if (!code || !realmId) {
     return NextResponse.redirect(new URL("/dashboard?error=missing_params", req.url));
@@ -69,19 +74,49 @@ export async function GET(req: NextRequest) {
     }
 
     // Upsert tenant with company name
-    const { data: tenant, error } = await db
-      .from("tenants")
-      .upsert({
-        qbo_realm_id: realmId,
-        user_id: user.id,
-        firm_id: currentFirmId,
-        company_name: companyInfo?.CompanyName ?? null,
-        qbo_access_token: tokens.access_token,
-        qbo_refresh_token: tokens.refresh_token,
-        qbo_token_expires_at: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
-      }, { onConflict: "qbo_realm_id" })
-      .select()
-      .single();
+    const upsertData: Record<string, unknown> = {
+      qbo_realm_id: realmId,
+      user_id: user.id,
+      firm_id: currentFirmId,
+      company_name: companyInfo?.CompanyName ?? null,
+      qbo_access_token: tokens.access_token,
+      qbo_refresh_token: tokens.refresh_token,
+      qbo_token_expires_at: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
+      qbo_connected: true,
+    };
+
+    // If reconnecting a specific tenant, update by ID instead of upsert by realm
+    let tenant, error;
+    if (reconnectTenantId) {
+      const result = await db.from("tenants").update(upsertData).eq("id", reconnectTenantId).select().single();
+      tenant = result.data; error = result.error;
+
+      // Stripe: swap archive → active
+      const { data: firm } = await db.from("firms").select("stripe_subscription_id").eq("id", currentFirmId!).single();
+      if (firm?.stripe_subscription_id) {
+        try {
+          const { stripe } = await import("@/lib/stripe");
+          const sub = await stripe.subscriptions.retrieve(firm.stripe_subscription_id);
+          const activeItem = sub.items.data.find(i => i.price.id === process.env.STRIPE_PRICE_ID);
+          const archiveItem = sub.items.data.find(i => i.price.id === process.env.STRIPE_ARCHIVE_PRICE_ID);
+          const items: object[] = [];
+          if (activeItem) {
+            items.push({ id: activeItem.id, quantity: (activeItem.quantity ?? 0) + 1 });
+          } else {
+            items.push({ price: process.env.STRIPE_PRICE_ID!, quantity: 1 });
+          }
+          if (archiveItem && (archiveItem.quantity ?? 1) > 1) {
+            items.push({ id: archiveItem.id, quantity: (archiveItem.quantity ?? 1) - 1 });
+          } else if (archiveItem) {
+            items.push({ id: archiveItem.id, deleted: true });
+          }
+          await stripe.subscriptions.update(firm.stripe_subscription_id, { items } as Parameters<typeof stripe.subscriptions.update>[1]);
+        } catch (e) { console.error("Stripe reconnect update failed:", e); }
+      }
+    } else {
+      const result = await db.from("tenants").upsert(upsertData, { onConflict: "qbo_realm_id" }).select().single();
+      tenant = result.data; error = result.error;
+    }
 
     if (error) throw error;
 

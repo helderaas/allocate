@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
   const db = getServiceSupabase();
   const { data: tenants } = await db
     .from("tenants")
-    .select("id, qbo_realm_id, division_a_location_name, division_b_location_name, company_name")
+    .select("id, qbo_realm_id, division_a_location_name, division_b_location_name, company_name, qbo_connected")
     .eq("firm_id", firmId)
     .order("created_at", { ascending: true });
 
