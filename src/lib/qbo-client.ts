@@ -123,7 +123,7 @@ interface GLRow {
   group?: string;
 }
 
-function sumGLSections(rows: GLRow[]): number {
+function sumGLSections(rows: GLRow[], debug = false): number {
   let total = 0;
   for (const row of rows) {
     if (row.type === "Section" && row.group !== "GrandTotal") {
@@ -131,13 +131,12 @@ function sumGLSections(rows: GLRow[]): number {
         (r) => (r as GLRow).type === "Section" && (r as GLRow).group !== "GrandTotal"
       );
       if (!hasNestedSections && row.Summary?.ColData) {
-        // Leaf section — no child sections inside, so this is the actual account total
+        if (debug) console.log("GL Summary ColData:", JSON.stringify(row.Summary.ColData));
         const val = parseFloat(row.Summary.ColData[6]?.value || "0") || 0;
         total += val;
       }
-      // Always recurse to find deeper leaf sections
       if (row.Rows?.Row?.length) {
-        total += sumGLSections(row.Rows.Row);
+        total += sumGLSections(row.Rows.Row, debug);
       }
     }
   }
@@ -216,7 +215,7 @@ export async function fetchGLBalances(
         }),
       ]);
 
-      const total = sumGLSections(glTotal?.Rows?.Row ?? []);
+      const total = sumGLSections(glTotal?.Rows?.Row ?? [], true); // debug first run
       const taggedPerDivision: Record<string, number> = {};
       let totalTagged = 0;
 
