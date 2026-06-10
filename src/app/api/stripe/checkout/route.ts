@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
   // Get firm and count active tenants
   const { data: firm } = await db
     .from("firms")
-    .select("*, tenants(id)")
+    .select("*, tenants(id), stripe_subscription_id, stripe_customer_id")
     .eq("id", firmId)
     .single();
 
@@ -41,6 +41,15 @@ export async function POST(req: NextRequest) {
   }
 
   if (!userEmail) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // If already subscribed, redirect to billing portal instead of new checkout
+  if (firm.stripe_subscription_id) {
+    const portalSession = await stripe.billingPortal.sessions.create({
+      customer: firm.stripe_customer_id!,
+      return_url: ,
+    });
+    return NextResponse.json({ url: portalSession.url });
+  }
 
   const quantity = Math.max(1, firm.tenants?.length ?? 1);
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://allocateapp.net";
