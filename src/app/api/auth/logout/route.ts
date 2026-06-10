@@ -6,5 +6,6 @@ export async function POST() {
   response.cookies.delete("sb_refresh_token");
   response.cookies.delete("tenant_id");
   response.cookies.delete("firm_id");
+  response.cookies.delete("user_id");
   return response;
 }
