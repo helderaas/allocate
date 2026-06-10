@@ -192,15 +192,10 @@ export async function GET(req: NextRequest) {
       if (tenant) {
         tenantId = tenant.id;
 
-        // Check setup completion
-        const { data: divisionsCheck } = await db.from("divisions").select("id").eq("tenant_id", tenant.id).limit(1);
-        const { data: rules } = await db.from("allocation_rules").select("id").eq("tenant_id", tenant.id).limit(1);
-        const hasDivisions = (divisionsCheck?.length ?? 0) > 0 || (!!tenant.division_a_location_id && !!tenant.division_b_location_id);
-        const hasRules = (rules?.length ?? 0) > 0;
-
-        if (!hasDivisions || !hasRules) {
-          // New connection — needs onboarding
-          const response = buildResponse(req, sessionData, firmId, tenantId, "/new-allocation");
+        // For new connections (not reconnects), always classify firm vs client first
+        if (!reconnectTenantId) {
+          const classifyUrl = "/connect-type?tenantId=" + tenantId;
+          const response = buildResponse(req, { userId }, firmId, tenantId, classifyUrl);
           return response;
         }
       }
