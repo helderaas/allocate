@@ -61,15 +61,24 @@ export async function GET(req: NextRequest) {
     const intuitSub = userInfo.sub; // This is the stable Intuit identity — use this, NOT email
     const db = getServiceSupabase();
 
+    let userId: string;
+    let firmId: string;
+
+    // "add_company" state: already logged in, just adding another QBO company
+    const isAddCompany = state === "add_company";
+    const cookieUserId = req.cookies.get("user_id")?.value ?? req.cookies.get("sb_access_token")?.value;
+    const cookieFirmId = req.cookies.get("firm_id")?.value;
+
+    if (isAddCompany && cookieUserId && cookieFirmId) {
+      userId = cookieUserId;
+      firmId = cookieFirmId;
+    } else {
     // Find or create Supabase user by intuit_sub
     let { data: existingUser } = await db
       .from("intuit_users")
       .select("user_id, firm_id")
       .eq("intuit_sub", intuitSub)
       .single();
-
-    let userId: string;
-    let firmId: string;
 
     if (existingUser) {
       // Returning user — use existing identity
@@ -113,6 +122,7 @@ export async function GET(req: NextRequest) {
         email: userInfo.email,
       });
     }
+    } // end isAddCompany else
 
     // Sign in as the user to get a valid session token
     // We use Supabase admin to generate a one-time link and then exchange it
@@ -248,3 +258,4 @@ function buildResponse(
 
   return response;
 }
+
