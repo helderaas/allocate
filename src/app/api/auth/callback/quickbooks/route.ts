@@ -192,11 +192,18 @@ export async function GET(req: NextRequest) {
       if (tenant) {
         tenantId = tenant.id;
 
-        // For new connections (not reconnects), always classify firm vs client first
         if (!reconnectTenantId) {
-          const classifyUrl = "/connect-type?tenantId=" + tenantId;
-          const response = buildResponse(req, { userId }, firmId, tenantId, classifyUrl);
-          return response;
+          if (isAddCompany) {
+            // Coming from dashboard nav — assume client, mark as such, go straight to Stripe
+            await db.from("tenants").update({ is_firm_company: false }).eq("id", tenantId);
+            const response = buildResponse(req, { userId }, firmId, tenantId, "/subscription/new");
+            return response;
+          } else {
+            // First-time sign in — ask firm vs client
+            const classifyUrl = "/connect-type?tenantId=" + tenantId;
+            const response = buildResponse(req, { userId }, firmId, tenantId, classifyUrl);
+            return response;
+          }
         }
       }
     }
