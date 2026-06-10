@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
   if (firm.stripe_subscription_id) {
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: firm.stripe_customer_id!,
-      return_url: ,
+      return_url: process.env.NEXT_PUBLIC_SITE_URL ? process.env.NEXT_PUBLIC_SITE_URL + "/dashboard" : "https://allocateapp.net/dashboard",
     });
     return NextResponse.json({ url: portalSession.url });
   }
