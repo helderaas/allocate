@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
   // Get firm and count active tenants
   const { data: firm } = await db
     .from("firms")
-    .select("*, tenants(id), stripe_subscription_id, stripe_customer_id")
+    .select("*, tenants(id, is_firm_company), stripe_subscription_id, stripe_customer_id")
     .eq("id", firmId)
     .single();
 
@@ -51,7 +51,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ url: portalSession.url });
   }
 
-  const quantity = Math.max(1, firm.tenants?.length ?? 1);
+  const clientCount = (firm.tenants ?? []).filter((t: { is_firm_company: boolean }) => !t.is_firm_company).length;
+  const quantity = Math.max(1, clientCount);
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://allocateapp.net";
 
   // Create or retrieve Stripe customer
