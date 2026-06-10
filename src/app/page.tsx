@@ -229,10 +229,11 @@ export default async function LandingPage() {
             <span>·</span>
             <span>© 2026 Allocate LLC</span>
           </div>
+          <p className="text-xs text-gray-400 text-center w-full md:w-auto">Intuit and QuickBooks are registered trademarks of Intuit Inc. Used with permission.</p>
           <div className="flex items-center gap-6">
             <Link href="/privacy" className="hover:text-gray-600">Privacy Policy</Link>
             <Link href="/terms" className="hover:text-gray-600">Terms of Service</Link>
-            <a href="mailto:privacy@allocateapp.net" className="hover:text-gray-600">Contact</a>
+            <a href="mailto:support@allocateapp.net" className="hover:text-gray-600">Support</a>
           </div>
         </div>
       </footer>
