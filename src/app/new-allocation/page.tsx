@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState, Suspense } from "react";
+import Image from "next/image";
 import { useSearchParams, useRouter } from "next/navigation";
 import { QBOAccount, QBOLocation } from "@/types";
 import {
@@ -243,7 +244,7 @@ function NewAllocationContent() {
   return (
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
-        <span className="font-semibold text-gray-900">Allocate</span>
+        <Image src="/allocate-logo-primary.svg" alt="Allocate" width={120} height={28} priority />
         <button onClick={() => router.push("/dashboard")} className="text-sm text-gray-500 hover:text-gray-700">Cancel</button>
       </nav>
 
