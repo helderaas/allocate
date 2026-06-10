@@ -1,6 +1,7 @@
 import axios from "axios";
 import { QBOTokens, QBOAccount, QBOLocation } from "@/types";
 import { getServiceSupabase } from "./supabase";
+import { encrypt, safeDecrypt } from "./crypto";
 
 // Thrown when the QBO refresh token itself is expired — user must reconnect
 export class QBOAuthExpiredError extends Error {
@@ -36,7 +37,7 @@ export async function refreshQBOToken(tenantId: string, refreshToken: string): P
     const db = getServiceSupabase();
     await db.from("tenants").update({
       qbo_access_token: data.access_token,
-      qbo_refresh_token: data.refresh_token,
+      qbo_refresh_token: encrypt(data.refresh_token),
       qbo_token_expires_at: new Date(Date.now() + data.expires_in * 1000).toISOString(),
     }).eq("id", tenantId);
 
