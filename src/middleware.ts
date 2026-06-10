@@ -6,6 +6,7 @@ const PUBLIC_ROUTES = [
   "/signup",
   "/disconnect",
   "/connect-type",
+  "/subscription/new",
   "/privacy",
   "/terms",
   "/blog",
