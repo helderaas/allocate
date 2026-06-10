@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import axios from "axios";
 import { getServiceSupabase } from "@/lib/supabase";
 import { fetchCompanyInfo } from "@/lib/qbo-client";
+import { encrypt, safeDecrypt } from "@/lib/crypto";
 import { QBOTokens } from "@/types";
 
 export async function GET(req: NextRequest) {
@@ -9,51 +10,26 @@ export async function GET(req: NextRequest) {
   const code = searchParams.get("code");
   const realmId = searchParams.get("realmId");
   const state = searchParams.get("state") ?? "";
+  const error = searchParams.get("error");
 
-  // Check if this is a reconnect for an existing tenant
-  const isReconnect = state.startsWith("reconnect_");
-  const reconnectTenantId = isReconnect ? state.replace("reconnect_", "") : null;
+  if (error) {
+    return NextResponse.redirect(new URL("/login?error=intuit_denied", req.url));
+  }
 
-  if (!code || !realmId) {
-    return NextResponse.redirect(new URL("/dashboard?error=missing_params", req.url));
+  if (!code) {
+    return NextResponse.redirect(new URL("/login?error=missing_code", req.url));
   }
 
   try {
-    const accessToken = req.cookies.get("sb_access_token")?.value;
-    const firmId = req.cookies.get("firm_id")?.value;
-
-    if (!accessToken) {
-      return NextResponse.redirect(new URL("/login", req.url));
-    }
-
-    const db = getServiceSupabase();
-
-    const { data: { user } } = await db.auth.getUser(accessToken);
-    if (!user) {
-      return NextResponse.redirect(new URL("/login", req.url));
-    }
-
-    let currentFirmId = firmId;
-    if (!currentFirmId) {
-      const { data: firm } = await db
-        .from("firms").select("id").eq("owner_user_id", user.id).single();
-      currentFirmId = firm?.id;
-    }
-
-    if (!currentFirmId) {
-      const { data: newFirm } = await db
-        .from("firms")
-        .insert({ name: user.email ?? "My Account", owner_user_id: user.id })
-        .select("id").single();
-      currentFirmId = newFirm?.id;
-    }
-
-    // Exchange code for QBO tokens
+    // Exchange code for tokens
     const credentials = Buffer.from(
       `${process.env.QBO_CLIENT_ID}:${process.env.QBO_CLIENT_SECRET}`
     ).toString("base64");
 
-    const { data: tokens } = await axios.post<QBOTokens>(
+    const { data: tokens } = await axios.post<QBOTokens & {
+      id_token?: string;
+      x_refresh_token_expires_in?: number;
+    }>(
       "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer",
       new URLSearchParams({
         grant_type: "authorization_code",
@@ -63,91 +39,210 @@ export async function GET(req: NextRequest) {
       { headers: { Authorization: `Basic ${credentials}`, "Content-Type": "application/x-www-form-urlencoded" } }
     );
 
-    // Fetch company name from QBO
-    let companyInfo = null;
-    try {
-      companyInfo = await fetchCompanyInfo(
-        "temp", realmId, tokens.access_token, tokens.refresh_token
-      );
-    } catch (e) {
-      console.error("fetchCompanyInfo failed (non-fatal):", e);
+    // Fetch OpenID user info to get Intuit identity
+    const { data: userInfo } = await axios.get<{
+      sub: string;
+      email: string;
+      emailVerified?: boolean;
+      email_verified?: boolean;
+      givenName?: string;
+      familyName?: string;
+    }>(
+      "https://accounts.platform.intuit.com/v1/openid_connect/userinfo",
+      { headers: { Authorization: `Bearer ${tokens.access_token}`, Accept: "application/json" } }
+    );
+
+    // Check emailVerified — REQUIRED by Intuit
+    const emailVerified = userInfo.emailVerified ?? userInfo.email_verified ?? false;
+    if (!emailVerified) {
+      return NextResponse.redirect(new URL("/login?error=email_not_verified", req.url));
     }
 
-    // Upsert tenant with company name
-    const upsertData: Record<string, unknown> = {
-      qbo_realm_id: realmId,
-      user_id: user.id,
-      firm_id: currentFirmId,
-      company_name: companyInfo?.CompanyName ?? null,
-      qbo_access_token: tokens.access_token,
-      qbo_refresh_token: tokens.refresh_token,
-      qbo_token_expires_at: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
-      qbo_connected: true,
-    };
+    const intuitSub = userInfo.sub; // This is the stable Intuit identity — use this, NOT email
+    const db = getServiceSupabase();
 
-    // If reconnecting a specific tenant, update by ID instead of upsert by realm
-    let tenant, error;
-    if (reconnectTenantId) {
-      const result = await db.from("tenants").update(upsertData).eq("id", reconnectTenantId).select().single();
-      tenant = result.data; error = result.error;
+    // Find or create Supabase user by intuit_sub
+    let { data: existingUser } = await db
+      .from("intuit_users")
+      .select("user_id, firm_id")
+      .eq("intuit_sub", intuitSub)
+      .single();
 
-      // Stripe: swap archive → active
-      const { data: firm } = await db.from("firms").select("stripe_subscription_id").eq("id", currentFirmId!).single();
-      if (firm?.stripe_subscription_id) {
-        try {
-          const { stripe } = await import("@/lib/stripe");
-          const sub = await stripe.subscriptions.retrieve(firm.stripe_subscription_id);
-          const activeItem = sub.items.data.find(i => i.price.id === process.env.STRIPE_PRICE_ID);
-          const archiveItem = sub.items.data.find(i => i.price.id === process.env.STRIPE_ARCHIVE_PRICE_ID);
-          const items: object[] = [];
-          if (activeItem) {
-            items.push({ id: activeItem.id, quantity: (activeItem.quantity ?? 0) + 1 });
-          } else {
-            items.push({ price: process.env.STRIPE_PRICE_ID!, quantity: 1 });
-          }
-          if (archiveItem && (archiveItem.quantity ?? 1) > 1) {
-            items.push({ id: archiveItem.id, quantity: (archiveItem.quantity ?? 1) - 1 });
-          } else if (archiveItem) {
-            items.push({ id: archiveItem.id, deleted: true });
-          }
-          await stripe.subscriptions.update(firm.stripe_subscription_id, { items } as Parameters<typeof stripe.subscriptions.update>[1]);
-        } catch (e) { console.error("Stripe reconnect update failed:", e); }
-      }
+    let userId: string;
+    let firmId: string;
+
+    if (existingUser) {
+      // Returning user — use existing identity
+      userId = existingUser.user_id;
+      firmId = existingUser.firm_id;
     } else {
-      const result = await db.from("tenants").upsert(upsertData, { onConflict: "qbo_realm_id" }).select().single();
-      tenant = result.data; error = result.error;
+      // New user — create Supabase auth user + firm
+      const { data: newAuthUser, error: createError } = await db.auth.admin.createUser({
+        email: userInfo.email,
+        email_confirm: true,
+        user_metadata: { intuit_sub: intuitSub },
+      });
+
+      if (createError || !newAuthUser.user) {
+        // User may already exist in auth (different flow) — look up by email
+        const { data: { users } } = await db.auth.admin.listUsers();
+        const existingAuthUser = users.find(u => u.email === userInfo.email);
+        if (!existingAuthUser) {
+          console.error("Failed to create user:", createError);
+          return NextResponse.redirect(new URL("/login?error=account_error", req.url));
+        }
+        userId = existingAuthUser.id;
+      } else {
+        userId = newAuthUser.user.id;
+      }
+
+      // Create firm
+      const { data: newFirm } = await db
+        .from("firms")
+        .insert({ name: userInfo.email, owner_user_id: userId })
+        .select("id")
+        .single();
+
+      firmId = newFirm!.id;
+
+      // Store intuit_sub -> user mapping
+      await db.from("intuit_users").insert({
+        intuit_sub: intuitSub,
+        user_id: userId,
+        firm_id: firmId,
+        email: userInfo.email,
+      });
     }
 
-    if (error) throw error;
+    // Create Supabase session for this user
+    const { data: sessionData } = await db.auth.admin.createSession({ user_id: userId });
 
-    // Check for completed setup using new divisions table OR legacy A/B columns
-    const { data: divisionsCheck } = await db
-      .from("divisions").select("id").eq("tenant_id", tenant.id).limit(1);
+    // Handle QBO company connection (only if realmId present)
+    let tenantId: string | null = null;
 
-    const { data: rules } = await db
-      .from("allocation_rules").select("id").eq("tenant_id", tenant.id).limit(1);
+    // Check if reconnect
+    const isReconnect = state.startsWith("reconnect_");
+    const reconnectTenantId = isReconnect ? state.replace("reconnect_", "") : null;
 
-    const hasDivisions = (divisionsCheck?.length ?? 0) > 0 ||
-      (!!tenant.division_a_location_id && !!tenant.division_b_location_id);
-    const hasRules = (rules?.length ?? 0) > 0;
-    const isSetupComplete = hasDivisions && hasRules;
+    if (realmId) {
+      // Fetch company name
+      let companyName: string | null = null;
+      try {
+        const info = await fetchCompanyInfo("temp", realmId, tokens.access_token, tokens.refresh_token);
+        companyName = info?.CompanyName ?? null;
+      } catch { /* non-fatal */ }
 
-    const redirectPath = isSetupComplete ? "/dashboard" : "/new-allocation";
+      const encryptedRefreshToken = encrypt(tokens.refresh_token);
 
-    const response = NextResponse.redirect(new URL(redirectPath, req.url));
-    response.cookies.set("tenant_id", tenant.id, {
+      const upsertData = {
+        qbo_realm_id: realmId,
+        user_id: userId,
+        firm_id: firmId,
+        company_name: companyName,
+        qbo_access_token: tokens.access_token,
+        qbo_refresh_token: encryptedRefreshToken,
+        qbo_token_expires_at: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
+        qbo_connected: true,
+      };
+
+      let tenant;
+      if (reconnectTenantId) {
+        const result = await db.from("tenants").update(upsertData).eq("id", reconnectTenantId).select().single();
+        tenant = result.data;
+
+        // Stripe: swap archive → active
+        const { data: firm } = await db.from("firms").select("stripe_subscription_id").eq("id", firmId).single();
+        if (firm?.stripe_subscription_id) {
+          try {
+            const { stripe } = await import("@/lib/stripe");
+            const sub = await stripe.subscriptions.retrieve(firm.stripe_subscription_id);
+            const activeItem = sub.items.data.find(i => i.price.id === process.env.STRIPE_PRICE_ID);
+            const archiveItem = sub.items.data.find(i => i.price.id === process.env.STRIPE_ARCHIVE_PRICE_ID);
+            const items: object[] = [];
+            if (activeItem) {
+              items.push({ id: activeItem.id, quantity: (activeItem.quantity ?? 0) + 1 });
+            } else {
+              items.push({ price: process.env.STRIPE_PRICE_ID!, quantity: 1 });
+            }
+            if (archiveItem && (archiveItem.quantity ?? 1) > 1) {
+              items.push({ id: archiveItem.id, quantity: (archiveItem.quantity ?? 1) - 1 });
+            } else if (archiveItem) {
+              items.push({ id: archiveItem.id, deleted: true });
+            }
+            await stripe.subscriptions.update(firm.stripe_subscription_id, { items } as Parameters<typeof stripe.subscriptions.update>[1]);
+          } catch (e) { console.error("Stripe reconnect update failed:", e); }
+        }
+      } else {
+        const result = await db.from("tenants").upsert(upsertData, { onConflict: "qbo_realm_id" }).select().single();
+        tenant = result.data;
+      }
+
+      if (tenant) {
+        tenantId = tenant.id;
+
+        // Check setup completion
+        const { data: divisionsCheck } = await db.from("divisions").select("id").eq("tenant_id", tenant.id).limit(1);
+        const { data: rules } = await db.from("allocation_rules").select("id").eq("tenant_id", tenant.id).limit(1);
+        const hasDivisions = (divisionsCheck?.length ?? 0) > 0 || (!!tenant.division_a_location_id && !!tenant.division_b_location_id);
+        const hasRules = (rules?.length ?? 0) > 0;
+
+        if (!hasDivisions || !hasRules) {
+          // New connection — needs onboarding
+          const response = buildResponse(req, sessionData, firmId, tenantId, "/new-allocation");
+          return response;
+        }
+      }
+    }
+
+    // Decode returnTo from state if present
+    let redirectPath = "/dashboard";
+    if (state.startsWith("sso_")) {
+      try {
+        redirectPath = Buffer.from(state.replace("sso_", ""), "base64").toString("utf8");
+        if (!redirectPath.startsWith("/") || redirectPath.startsWith("//")) redirectPath = "/dashboard";
+      } catch { redirectPath = "/dashboard"; }
+    }
+
+    // If no tenant yet (SSO-only, no QBO connected), go to dashboard which will prompt connect
+    return buildResponse(req, sessionData, firmId, tenantId, redirectPath);
+
+  } catch (err) {
+    console.error("QBO/SSO callback error:", err);
+    return NextResponse.redirect(new URL("/login?error=auth_failed", req.url));
+  }
+}
+
+function buildResponse(
+  req: NextRequest,
+  sessionData: { session?: { access_token: string; refresh_token: string } } | null,
+  firmId: string,
+  tenantId: string | null,
+  redirectPath: string
+) {
+  const response = NextResponse.redirect(new URL(redirectPath, req.url));
+
+  if (sessionData?.session) {
+    response.cookies.set("sb_access_token", sessionData.session.access_token, {
+      httpOnly: true, secure: process.env.NODE_ENV === "production",
+      sameSite: "lax", maxAge: 60 * 60 * 24 * 7, path: "/",
+    });
+    response.cookies.set("sb_refresh_token", sessionData.session.refresh_token, {
       httpOnly: true, secure: process.env.NODE_ENV === "production",
       sameSite: "lax", maxAge: 60 * 60 * 24 * 30, path: "/",
     });
-    if (currentFirmId) {
-      response.cookies.set("firm_id", currentFirmId, {
-        httpOnly: true, secure: process.env.NODE_ENV === "production",
-        sameSite: "lax", maxAge: 60 * 60 * 24 * 30, path: "/",
-      });
-    }
-    return response;
-  } catch (err) {
-    console.error("QBO OAuth callback error:", err);
-    return NextResponse.redirect(new URL("/dashboard?error=qbo_auth_failed", req.url));
   }
+
+  response.cookies.set("firm_id", firmId, {
+    httpOnly: true, secure: process.env.NODE_ENV === "production",
+    sameSite: "lax", maxAge: 60 * 60 * 24 * 30, path: "/",
+  });
+
+  if (tenantId) {
+    response.cookies.set("tenant_id", tenantId, {
+      httpOnly: true, secure: process.env.NODE_ENV === "production",
+      sameSite: "lax", maxAge: 60 * 60 * 24 * 30, path: "/",
+    });
+  }
+
+  return response;
 }
