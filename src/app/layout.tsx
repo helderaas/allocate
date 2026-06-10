@@ -5,6 +5,10 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
+  icons: {
+    icon: '/favicon.png',
+    apple: '/allocate-icon.svg',
+  },
   title: "Allocate",
   description: "Automated expense allocation for multi-division QuickBooks companies",
 };
