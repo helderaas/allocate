@@ -205,10 +205,10 @@ export default function Nav() {
                       </div>
                     </div>
                   ))}
-                  <div className="border-t border-gray-100">
-                    <a href={qboAuthUrl.toString()}
-                      className="flex items-center gap-2 px-3 py-2.5 text-sm text-brand-600 hover:bg-brand-50 transition-colors">
-                      <Plus size={14} /> Connect another company
+                  <div className="border-t border-gray-100 px-3 py-2.5">
+                    <a href={qboAuthUrl.toString()} className="group flex justify-center">
+                      <img src="/C2QB_green_btn_med_default.svg" alt="Connect to QuickBooks" width={180} className="group-hover:hidden" />
+                      <img src="/C2QB_green_btn_med_hover.svg" alt="Connect to QuickBooks" width={180} className="hidden group-hover:block" />
                     </a>
                   </div>
                 </div>
