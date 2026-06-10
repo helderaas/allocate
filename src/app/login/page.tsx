@@ -15,25 +15,22 @@ export default function LoginPage() {
             Allocate connects directly to QuickBooks Online. Sign in with your Intuit account to get started.
           </p>
 
-          {/* Official Intuit Sign in with Intuit button */}
-          <a
-            href="/api/auth/intuit"
-            className="group block w-full"
-          >
+          {/* Official Intuit Sign in with Intuit button — natural size, centered */}
+          <a href="/api/auth/intuit" className="group flex justify-center">
             <Image
-              src="/Sign_in_blue_btn_tall_default.png"
+              src="/Sign_in_blue_btn_med_default.png"
               alt="Sign in with Intuit"
-              width={400}
-              height={52}
-              className="w-full group-hover:hidden"
+              width={212}
+              height={40}
+              className="group-hover:hidden"
               priority
             />
             <Image
-              src="/Sign_in_blue_btn_tall_hover.png"
+              src="/Sign_in_blue_btn_med_hover.png"
               alt="Sign in with Intuit"
-              width={400}
-              height={52}
-              className="w-full hidden group-hover:block"
+              width={212}
+              height={40}
+              className="hidden group-hover:block"
               priority
             />
           </a>
