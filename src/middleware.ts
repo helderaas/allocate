@@ -13,6 +13,7 @@ const PUBLIC_ROUTES = [
   "/auth",
   "/api/auth",
   "/api/stripe/webhook",
+  "/api/stripe/restore",
   "/subscription",
 ];
 
