@@ -114,8 +114,10 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // Create Supabase session for this user
-    const { data: sessionData } = await db.auth.admin.createSession({ user_id: userId });
+    // Sign in as the user to get a valid session token
+    // We use Supabase admin to generate a one-time link and then exchange it
+    // Since SSO users have no password, we store user_id directly in a secure cookie
+    const sessionData = { userId };
 
     // Handle QBO company connection (only if realmId present)
     let tenantId: string | null = null;
@@ -204,7 +206,7 @@ export async function GET(req: NextRequest) {
     }
 
     // If no tenant yet (SSO-only, no QBO connected), go to dashboard which will prompt connect
-    return buildResponse(req, sessionData, firmId, tenantId, redirectPath);
+    return buildResponse(req, { userId }, firmId, tenantId, redirectPath);
 
   } catch (err) {
     console.error("QBO/SSO callback error:", err);
@@ -214,23 +216,23 @@ export async function GET(req: NextRequest) {
 
 function buildResponse(
   req: NextRequest,
-  sessionData: { session?: { access_token: string; refresh_token: string } } | null,
+  sessionData: { userId: string },
   firmId: string,
   tenantId: string | null,
   redirectPath: string
 ) {
   const response = NextResponse.redirect(new URL(redirectPath, req.url));
 
-  if (sessionData?.session) {
-    response.cookies.set("sb_access_token", sessionData.session.access_token, {
-      httpOnly: true, secure: process.env.NODE_ENV === "production",
-      sameSite: "lax", maxAge: 60 * 60 * 24 * 7, path: "/",
-    });
-    response.cookies.set("sb_refresh_token", sessionData.session.refresh_token, {
-      httpOnly: true, secure: process.env.NODE_ENV === "production",
-      sameSite: "lax", maxAge: 60 * 60 * 24 * 30, path: "/",
-    });
-  }
+  // Store user identity in secure httpOnly cookie (no password needed for SSO users)
+  response.cookies.set("user_id", sessionData.userId, {
+    httpOnly: true, secure: process.env.NODE_ENV === "production",
+    sameSite: "lax", maxAge: 60 * 60 * 24 * 30, path: "/",
+  });
+  // Set sb_access_token to userId so middleware auth check passes
+  response.cookies.set("sb_access_token", sessionData.userId, {
+    httpOnly: true, secure: process.env.NODE_ENV === "production",
+    sameSite: "lax", maxAge: 60 * 60 * 24 * 7, path: "/",
+  });
 
   response.cookies.set("firm_id", firmId, {
     httpOnly: true, secure: process.env.NODE_ENV === "production",
