@@ -81,9 +81,21 @@ export async function GET(req: NextRequest) {
       .single();
 
     if (existingUser) {
-      // Returning user — use existing identity
+      // Returning user — restore session and go straight to dashboard
       userId = existingUser.user_id;
       firmId = existingUser.firm_id;
+
+      // Get their most recent active tenant
+      const { data: lastTenant } = await db
+        .from("tenants")
+        .select("id")
+        .eq("firm_id", firmId)
+        .eq("qbo_connected", true)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+
+      return buildResponse(req, { userId }, firmId, lastTenant?.id ?? null, "/dashboard");
     } else {
       // New user — create Supabase auth user + firm
       const { data: newAuthUser, error: createError } = await db.auth.admin.createUser({
