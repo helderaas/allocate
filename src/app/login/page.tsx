@@ -15,28 +15,32 @@ export default function LoginPage() {
             Allocate connects directly to QuickBooks Online. Sign in with your Intuit account to get started.
           </p>
 
-          {/* Sign in with Intuit button */}
+          {/* Official Intuit Sign in with Intuit button */}
           <a
             href="/api/auth/intuit"
-            className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-[#0077C5] hover:bg-[#005ea6] text-white rounded-xl font-medium text-sm transition-colors"
+            className="group block w-full"
           >
-            <svg width="20" height="20" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M16 2C8.268 2 2 8.268 2 16s6.268 14 14 14 14-6.268 14-14S23.732 2 16 2z" fill="white"/>
-              <path d="M16 7c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2s2-.9 2-2V9c0-1.1-.9-2-2-2z" fill="#0077C5"/>
-              <path d="M11 13c-1.1 0-2 .9-2 2v4c0 1.1.9 2 2 2s2-.9 2-2v-4c0-1.1-.9-2-2-2z" fill="#0077C5"/>
-              <path d="M21 13c-1.1 0-2 .9-2 2v4c0 1.1.9 2 2 2s2-.9 2-2v-4c0-1.1-.9-2-2-2z" fill="#0077C5"/>
-            </svg>
-            Sign in with Intuit
+            <Image
+              src="/Sign_in_blue_btn_tall_default.png"
+              alt="Sign in with Intuit"
+              width={400}
+              height={52}
+              className="w-full group-hover:hidden"
+              priority
+            />
+            <Image
+              src="/Sign_in_blue_btn_tall_hover.png"
+              alt="Sign in with Intuit"
+              width={400}
+              height={52}
+              className="w-full hidden group-hover:block"
+              priority
+            />
           </a>
 
           <p className="text-xs text-gray-400 text-center">
             New to Allocate? Signing in will create your account automatically.
           </p>
-        </div>
-
-        {/* Error states */}
-        <div id="error-container" className="mt-4">
-          {/* Client-side error display handled below */}
         </div>
 
         <p className="text-center text-xs text-gray-400 mt-6">
