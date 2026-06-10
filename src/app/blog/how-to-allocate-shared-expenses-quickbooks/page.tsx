@@ -36,7 +36,7 @@ export default function Post() {
             How to Allocate Shared Expenses Across Divisions in QuickBooks Online
           </h1>
           <p className="text-xl text-gray-500 leading-relaxed">
-            If your company has multiple locations, departments, or classes sharing overhead expenses — you already know the monthly pain of splitting those costs manually in QBO. Here's how to do it right, and how to automate it entirely.
+            If your company has multiple locations, departments, or classes sharing overhead expenses — you already know the monthly pain of splitting those costs manually in QuickBooks Online. Here's how to do it right, and how to automate it entirely.
           </p>
         </div>
 
@@ -131,7 +131,7 @@ export default function Post() {
             <div className="mt-6 p-5 bg-amber-50 border border-amber-200 rounded-xl">
               <p className="text-amber-800 text-sm font-medium mb-1">⚠️ The real problem</p>
               <p className="text-amber-700 text-sm leading-relaxed">
-                This process is completely manual, highly repetitive, and prone to errors — especially when revenue percentages change month to month. One wrong formula in your spreadsheet, one mistyped amount in QBO, and your financial statements are off.
+                This process is completely manual, highly repetitive, and prone to errors — especially when revenue percentages change month to month. One wrong formula in your spreadsheet, one mistyped amount in QuickBooks Online, and your financial statements are off.
               </p>
             </div>
           </section>
@@ -144,10 +144,10 @@ export default function Post() {
 
             <div className="mt-6 grid grid-cols-1 gap-4">
               {[
-                { icon: "📊", title: "Pulls live data from QBO", desc: "Allocate reads your actual GL balances and P&L revenue figures directly from QuickBooks — no manual exports or spreadsheets." },
+                { icon: "📊", title: "Pulls live data from QuickBooks Online", desc: "Allocate reads your actual GL balances and P&L revenue figures directly from QuickBooks — no manual exports or spreadsheets." },
                 { icon: "🧮", title: "Calculates splits automatically", desc: "Revenue percentage splits are recalculated fresh each month using your actual QBO data. Fixed splits stay exactly where you set them." },
                 { icon: "✅", title: "Review before posting", desc: "You see the full journal entry before it goes anywhere. Edit any line if needed, then approve with one click." },
-                { icon: "📬", title: "Posts directly to QuickBooks", desc: "The journal entry posts to QBO instantly — properly tagged to each location or class. No copy-pasting, no typos." },
+                { icon: "📬", title: "Posts directly to QuickBooks", desc: "The journal entry posts to QuickBooks Online instantly — properly tagged to each location or class. No copy-pasting, no typos." },
                 { icon: "🗂️", title: "Saves your configuration", desc: "Save your account rules as a template. Next month, run the same allocation in seconds." },
               ].map(({ icon, title, desc }) => (
                 <div key={title} className="flex gap-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
@@ -173,7 +173,7 @@ export default function Post() {
                 "Healthcare practices with multiple specialties (chiropractic + behavioral health, dental + ortho)",
                 "Franchises allocating corporate overhead to individual locations",
                 "Accounting firms managing clients with shared expense structures",
-                "Any QBO company using Locations, Classes, or Departments to track divisions",
+                "Any QuickBooks Online company using Locations, Classes, or Departments to track divisions",
               ].map(item => (
                 <li key={item} className="flex items-start gap-2 text-gray-600 text-sm">
                   <span className="text-brand-500 mt-0.5 shrink-0">✓</span>
