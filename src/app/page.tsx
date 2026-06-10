@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -14,7 +15,7 @@ export default async function LandingPage() {
     <div className="min-h-screen bg-white">
       {/* Nav */}
       <nav className="border-b border-gray-100 px-6 py-4 flex items-center justify-between max-w-6xl mx-auto">
-        <span className="text-xl font-bold text-gray-900">Allocate</span>
+        <Image src="/allocate-logo-primary.svg" alt="Allocate" width={160} height={36} priority />
         <div className="flex items-center gap-4">
           <Link href="/blog" className="text-sm text-gray-600 hover:text-gray-900 font-medium">
             Blog
