@@ -1,97 +1,55 @@
-"use client";
-import { useState } from "react";
-import { useSearchParams } from "next/navigation";
-import { Loader2, Mail, Lock, ArrowRight } from "lucide-react";
-import { Suspense } from "react";
+import Image from "next/image";
+import Link from "next/link";
 
-function LoginContent() {
-  const params = useSearchParams();
-  const returnTo = params.get("returnTo") || "/dashboard";
-
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-
-    const res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-      credentials: "include",
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      setError(data.error ?? "Invalid email or password");
-      setLoading(false);
-      return;
-    }
-
-    // Hard redirect after cookie is set
-    window.location.href = returnTo;
-  };
-
+export default function LoginPage() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-semibold text-gray-900">Allocate</h1>
-          <p className="text-gray-500 text-sm mt-1">Sign in to your account</p>
+          <Image src="/allocate-logo-primary.svg" alt="Allocate" width={160} height={36} className="mx-auto mb-6" priority />
+          <p className="text-gray-500 text-sm">Sign in to your account</p>
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Email</label>
-              <div className="relative">
-                <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
-                  placeholder="you@example.com"
-                  className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-brand-400" />
-              </div>
-            </div>
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="block text-xs font-medium text-gray-700">Password</label>
-                <a href="/forgot-password" className="text-xs text-brand-600 hover:text-brand-700">Forgot password?</a>
-              </div>
-              <div className="relative">
-                <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input type="password" value={password} onChange={e => setPassword(e.target.value)} required
-                  placeholder="••••••••"
-                  className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-brand-400" />
-              </div>
-            </div>
-            {error && (
-              <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-red-700 text-xs">{error}</div>
-            )}
-            <button type="submit" disabled={loading}
-              className="w-full flex items-center justify-center gap-2 py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-60 text-white rounded-xl font-medium text-sm">
-              {loading ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
-              {loading ? "Signing in..." : "Sign in"}
-            </button>
-          </form>
+        <div className="bg-white rounded-2xl border border-gray-200 p-8 shadow-sm flex flex-col items-center gap-6">
+          <p className="text-sm text-gray-600 text-center">
+            Allocate connects directly to QuickBooks Online. Sign in with your Intuit account to get started.
+          </p>
+
+          {/* Sign in with Intuit button */}
+          <a
+            href="/api/auth/intuit"
+            className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-[#0077C5] hover:bg-[#005ea6] text-white rounded-xl font-medium text-sm transition-colors"
+          >
+            <svg width="20" height="20" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M16 2C8.268 2 2 8.268 2 16s6.268 14 14 14 14-6.268 14-14S23.732 2 16 2z" fill="white"/>
+              <path d="M16 7c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2s2-.9 2-2V9c0-1.1-.9-2-2-2z" fill="#0077C5"/>
+              <path d="M11 13c-1.1 0-2 .9-2 2v4c0 1.1.9 2 2 2s2-.9 2-2v-4c0-1.1-.9-2-2-2z" fill="#0077C5"/>
+              <path d="M21 13c-1.1 0-2 .9-2 2v4c0 1.1.9 2 2 2s2-.9 2-2v-4c0-1.1-.9-2-2-2z" fill="#0077C5"/>
+            </svg>
+            Sign in with Intuit
+          </a>
+
+          <p className="text-xs text-gray-400 text-center">
+            New to Allocate? Signing in will create your account automatically.
+          </p>
         </div>
 
-        <p className="text-center text-sm text-gray-500 mt-4">
-          Don&apos;t have an account?{" "}
-          <a href="/signup" className="text-brand-600 hover:text-brand-700 font-medium">Sign up</a>
+        {/* Error states */}
+        <div id="error-container" className="mt-4">
+          {/* Client-side error display handled below */}
+        </div>
+
+        <p className="text-center text-xs text-gray-400 mt-6">
+          By signing in you agree to our{" "}
+          <Link href="/terms" className="text-brand-600 hover:text-brand-700">Terms of Service</Link>
+          {" "}and{" "}
+          <Link href="/privacy" className="text-brand-600 hover:text-brand-700">Privacy Policy</Link>
+        </p>
+
+        <p className="text-center text-xs text-gray-400 mt-3">
+          Intuit and QuickBooks are registered trademarks of Intuit Inc. Used with permission.
         </p>
       </div>
     </div>
-  );
-}
-
-export default function LoginPage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin" size={20} /></div>}>
-      <LoginContent />
-    </Suspense>
   );
 }
