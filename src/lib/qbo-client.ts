@@ -19,9 +19,10 @@ const QBO_BASE = {
 const env = (process.env.QBO_ENVIRONMENT ?? "sandbox") as "sandbox" | "production";
 
 export async function refreshQBOToken(tenantId: string, refreshToken: string): Promise<QBOTokens> {
+  const plainRefreshToken = safeDecrypt(refreshToken);
   const params = new URLSearchParams({
     grant_type: "refresh_token",
-    refresh_token: refreshToken,
+    refresh_token: plainRefreshToken,
   });
   const credentials = Buffer.from(
     `${process.env.QBO_CLIENT_ID}:${process.env.QBO_CLIENT_SECRET}`
