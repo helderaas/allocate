@@ -1,6 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const PUBLIC_ROUTES = ["/", "/login", "/signup", "/forgot-password", "/reset-password", "/auth", "/api/auth", "/api/stripe/webhook", "/subscription", "/privacy", "/terms", "/blog"];
+const PUBLIC_ROUTES = [
+  "/",
+  "/login",
+  "/signup",
+  "/disconnect",
+  "/privacy",
+  "/terms",
+  "/blog",
+  "/auth",
+  "/api/auth",
+  "/api/stripe/webhook",
+  "/subscription",
+];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -10,12 +22,13 @@ export async function middleware(req: NextRequest) {
   );
   if (isPublic) return NextResponse.next();
 
-  // Check for our simple session cookie
   const accessToken = req.cookies.get("sb_access_token")?.value;
 
   if (!accessToken) {
     const loginUrl = new URL("/login", req.url);
-    loginUrl.searchParams.set("returnTo", pathname);
+    // Validate returnTo — only allow relative paths to prevent open redirect
+    const safeReturnTo = pathname.startsWith("/") && !pathname.startsWith("//") ? pathname : "/dashboard";
+    loginUrl.searchParams.set("returnTo", safeReturnTo);
     return NextResponse.redirect(loginUrl);
   }
 
@@ -27,7 +40,3 @@ export const config = {
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
-
-
-
-
