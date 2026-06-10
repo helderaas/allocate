@@ -122,7 +122,7 @@ export default function Nav() {
   qboAuthUrl.searchParams.set("redirect_uri", process.env.NEXT_PUBLIC_QBO_REDIRECT_URI ?? "");
   qboAuthUrl.searchParams.set("response_type", "code");
   qboAuthUrl.searchParams.set("scope", "com.intuit.quickbooks.accounting openid profile email");
-  qboAuthUrl.searchParams.set("state", "allocate_connect");
+  qboAuthUrl.searchParams.set("state", "add_company");
 
   const companyName = (c: Company) => c.company_name ?? c.division_a_location_name ?? "Unnamed Company";
 
