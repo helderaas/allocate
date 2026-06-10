@@ -36,11 +36,9 @@ export default function DisconnectPage() {
           </p>
 
           {reconnectUrl && (
-            <a
-              href={reconnectUrl}
-              className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-medium text-sm transition-colors mb-3"
-            >
-              Connect to QuickBooks
+            <a href={reconnectUrl} className="group flex justify-center mb-3">
+              <img src="/C2QB_green_btn_tall_default.svg" alt="Connect to QuickBooks" width={220} className="group-hover:hidden" />
+              <img src="/C2QB_green_btn_tall_hover.svg" alt="Connect to QuickBooks" width={220} className="hidden group-hover:block" />
             </a>
           )}
 
