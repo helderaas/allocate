@@ -40,7 +40,7 @@ export default function UpgradeWall() {
 
         <div className="bg-gray-50 rounded-xl p-4 mb-6 text-left space-y-2">
           {[
-            "Automated QBO journal entries",
+            "Automated QuickBooks Online journal entries",
             "Unlimited allocations per month",
             "Saved templates",
             "Full audit trail",
