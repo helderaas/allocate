@@ -1,7 +1,16 @@
 import Image from "next/image";
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  const cookieStore = await cookies();
+  const userId = cookieStore.get("user_id")?.value ?? cookieStore.get("sb_access_token")?.value;
+  const firmId = cookieStore.get("firm_id")?.value;
+  if (userId && firmId) {
+    redirect("/dashboard");
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-sm">
