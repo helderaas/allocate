@@ -10,6 +10,7 @@ interface Company {
   division_a_location_name?: string;
   division_b_location_name?: string;
   qbo_connected?: boolean;
+  is_firm_company?: boolean;
 }
 
 type ConfirmAction = { type: "disconnect" | "cancel"; company: Company } | null;
