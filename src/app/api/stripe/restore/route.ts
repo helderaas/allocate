@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { getServiceSupabase } from "@/lib/supabase";
+import { fetchCompanyInfo } from "@/lib/qbo-client";
+import { safeDecrypt } from "@/lib/crypto";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -20,7 +22,6 @@ export async function GET(req: NextRequest) {
 
     const db = getServiceSupabase();
 
-    // Get the firm's owner user
     const { data: firm } = await db
       .from("firms")
       .select("owner_user_id")
@@ -34,32 +35,39 @@ export async function GET(req: NextRequest) {
     // Get the most recent tenant for this firm
     const { data: tenant } = await db
       .from("tenants")
-      .select("id")
+      .select("id, company_name, qbo_realm_id, qbo_access_token, qbo_refresh_token")
       .eq("firm_id", firmId)
       .order("created_at", { ascending: false })
       .limit(1)
       .single();
 
-    // Re-set all session cookies
-    const response = NextResponse.redirect(new URL("/dashboard", req.url));
+    // Fetch company name if missing
+    if (tenant && !tenant.company_name && tenant.qbo_access_token && tenant.qbo_realm_id) {
+      try {
+        const info = await fetchCompanyInfo(
+          tenant.id,
+          tenant.qbo_realm_id,
+          tenant.qbo_access_token,
+          safeDecrypt(tenant.qbo_refresh_token)
+        );
+        if (info?.CompanyName) {
+          await db.from("tenants")
+            .update({ company_name: info.CompanyName })
+            .eq("id", tenant.id);
+        }
+      } catch { /* non-fatal */ }
+    }
 
-    response.cookies.set("user_id", firm.owner_user_id, {
-      httpOnly: true, secure: true, sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 30, path: "/",
-    });
-    response.cookies.set("sb_access_token", firm.owner_user_id, {
-      httpOnly: true, secure: true, sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7, path: "/",
-    });
-    response.cookies.set("firm_id", firmId, {
-      httpOnly: true, secure: true, sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 30, path: "/",
-    });
+    const response = NextResponse.redirect(new URL("/dashboard", req.url));
+    const isProd = process.env.NODE_ENV === "production";
+    const cookieOpts = { httpOnly: true, secure: isProd, sameSite: "lax" as const, path: "/" };
+
+    response.cookies.set("user_id", firm.owner_user_id, { ...cookieOpts, maxAge: 60 * 60 * 24 * 30 });
+    response.cookies.set("sb_access_token", firm.owner_user_id, { ...cookieOpts, maxAge: 60 * 60 * 24 * 30 });
+    response.cookies.set("firm_id", firmId, { ...cookieOpts, maxAge: 60 * 60 * 24 * 30 });
+
     if (tenant) {
-      response.cookies.set("tenant_id", tenant.id, {
-        httpOnly: true, secure: true, sameSite: "lax",
-        maxAge: 60 * 60 * 24 * 30, path: "/",
-      });
+      response.cookies.set("tenant_id", tenant.id, { ...cookieOpts, maxAge: 60 * 60 * 24 * 30 });
     }
 
     return response;
