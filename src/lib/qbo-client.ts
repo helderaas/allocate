@@ -115,11 +115,11 @@ export async function fetchCompanyInfo(
   tenantId: string, realmId: string, accessToken: string, refreshToken: string
 ): Promise<{ CompanyName: string; Country: string } | null> {
   try {
-    const data = await qboRequest<{ QueryResponse: { CompanyInfo: { CompanyName: string; Country: string }[] } }>(
-      tenantId, realmId, accessToken, refreshToken, "/query",
-      { query: "SELECT CompanyName, Country FROM CompanyInfo" }
+    // Use direct REST endpoint — more reliable than query API
+    const data = await qboRequest<{ CompanyInfo: { CompanyName: string; Country: string } }>(
+      tenantId, realmId, accessToken, refreshToken, `/companyinfo/${realmId}`
     );
-    return data.QueryResponse?.CompanyInfo?.[0] ?? null;
+    return data.CompanyInfo ?? null;
   } catch {
     return null;
   }
