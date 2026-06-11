@@ -20,8 +20,8 @@ export default async function LandingPage() {
           <Link href="/blog" className="text-sm text-gray-600 hover:text-gray-900 font-medium">
             Blog
           </Link>
-          <Link href="/api/auth/restore" className="text-sm text-gray-600 hover:text-gray-900 font-medium">
-            Returning Users
+          <Link href="/login" className="text-sm text-gray-600 hover:text-gray-900 font-medium">
+            Sign in
           </Link>
           <Link href="/login"
             className="text-sm px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-lg font-medium transition-colors">
