@@ -2,38 +2,22 @@ import Image from "next/image";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { getServiceSupabase } from "@/lib/supabase";
 
 export default async function LoginPage() {
   const cookieStore = await cookies();
   const userId = cookieStore.get("user_id")?.value ?? cookieStore.get("sb_access_token")?.value;
   const firmId = cookieStore.get("firm_id")?.value;
+  const intuitSub = cookieStore.get("intuit_sub")?.value;
 
-  // Already have session — go straight to dashboard
+  // Active session — go straight to dashboard
   if (userId && firmId) {
     redirect("/dashboard");
   }
 
-  // Check if this user has a previously connected realm — if so pass it to skip company select
-  let realmId: string | null = null;
-  if (userId) {
-    try {
-      const db = getServiceSupabase();
-      const { data: tenant } = await db
-        .from("tenants")
-        .select("qbo_realm_id")
-        .eq("firm_id", firmId ?? "")
-        .eq("qbo_connected", true)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single();
-      realmId = tenant?.qbo_realm_id ?? null;
-    } catch { /* non-fatal */ }
+  // Has intuit_sub cookie — restore session without OAuth
+  if (intuitSub) {
+    redirect("/api/auth/restore");
   }
-
-  const signInUrl = realmId
-    ? `/api/auth/intuit?realmId=${realmId}`
-    : "/api/auth/intuit";
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
@@ -46,7 +30,7 @@ export default async function LoginPage() {
           <p className="text-sm text-gray-600 text-center">
             Allocate connects directly to QuickBooks Online. Sign in with your Intuit account to get started.
           </p>
-          <a href={signInUrl} className="group flex justify-center">
+          <a href="/api/auth/intuit" className="group flex justify-center">
             <img src="/Sign_in_blue_btn_tall_default.svg" alt="Sign in with Intuit" width={220} className="group-hover:hidden" />
             <img src="/Sign_in_blue_btn_tall_hover.svg" alt="Sign in with Intuit" width={220} className="hidden group-hover:block" />
           </a>
