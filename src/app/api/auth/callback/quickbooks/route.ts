@@ -95,7 +95,7 @@ export async function GET(req: NextRequest) {
         .limit(1)
         .single();
 
-      return buildResponse(req, { userId }, firmId, lastTenant?.id ?? null, "/dashboard");
+      return buildResponse(req, { userId }, firmId, lastTenant?.id ?? null, "/dashboard", intuitSub);
     } else {
       // New user — create Supabase auth user + firm
       const { data: newAuthUser, error: createError } = await db.auth.admin.createUser({
@@ -208,12 +208,12 @@ export async function GET(req: NextRequest) {
           if (isAddCompany) {
             // Coming from dashboard nav — assume client, mark as such, go straight to Stripe
             await db.from("tenants").update({ is_firm_company: false }).eq("id", tenantId);
-            const response = buildResponse(req, { userId }, firmId, tenantId, "/subscription/new");
+            const response = buildResponse(req, { userId }, firmId, tenantId, "/subscription/new", intuitSub);
             return response;
           } else {
             // First-time sign in — ask firm vs client
             const classifyUrl = "/connect-type?tenantId=" + tenantId;
-            const response = buildResponse(req, { userId }, firmId, tenantId, classifyUrl);
+            const response = buildResponse(req, { userId }, firmId, tenantId, classifyUrl, intuitSub);
             return response;
           }
         }
@@ -230,7 +230,7 @@ export async function GET(req: NextRequest) {
     }
 
     // If no tenant yet (SSO-only, no QBO connected), go to dashboard which will prompt connect
-    return buildResponse(req, { userId }, firmId, tenantId, redirectPath);
+    return buildResponse(req, { userId }, firmId, tenantId, redirectPath, intuitSub);
 
   } catch (err) {
     console.error("QBO/SSO callback error:", err);
@@ -243,7 +243,8 @@ function buildResponse(
   sessionData: { userId: string },
   firmId: string,
   tenantId: string | null,
-  redirectPath: string
+  redirectPath: string,
+  intuitSubValue?: string
 ) {
   const response = NextResponse.redirect(new URL(redirectPath, req.url));
 
@@ -257,6 +258,11 @@ function buildResponse(
 
   if (tenantId) {
     response.cookies.set("tenant_id", tenantId, { ...cookieOpts, maxAge: 60 * 60 * 24 * 30 });
+  }
+
+  if (intuitSubValue) {
+    // Store intuit_sub for 1 year so returning users can skip OAuth company select
+    response.cookies.set("intuit_sub", intuitSubValue, { ...cookieOpts, maxAge: 60 * 60 * 24 * 365 });
   }
 
   return response;
