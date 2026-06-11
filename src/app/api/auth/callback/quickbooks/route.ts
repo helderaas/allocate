@@ -149,20 +149,14 @@ export async function GET(req: NextRequest) {
     const reconnectTenantId = isReconnect ? state.replace("reconnect_", "") : null;
 
     if (realmId) {
-      // Fetch company name
-      let companyName: string | null = null;
-      try {
-        const info = await fetchCompanyInfo("temp", realmId, tokens.access_token, tokens.refresh_token);
-        companyName = info?.CompanyName ?? null;
-      } catch { /* non-fatal */ }
-
       const encryptedRefreshToken = encrypt(tokens.refresh_token);
 
+      // Upsert tenant first so we have a real tenant ID for company name fetch
       const upsertData = {
         qbo_realm_id: realmId,
         user_id: userId,
         firm_id: firmId,
-        company_name: companyName,
+        company_name: null as string | null,
         qbo_access_token: tokens.access_token,
         qbo_refresh_token: encryptedRefreshToken,
         qbo_token_expires_at: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
@@ -173,6 +167,16 @@ export async function GET(req: NextRequest) {
       if (reconnectTenantId) {
         const result = await db.from("tenants").update(upsertData).eq("id", reconnectTenantId).select().single();
         tenant = result.data;
+        // Fetch company name with real tenant ID
+        if (tenant && !tenant.company_name) {
+          try {
+            const info = await fetchCompanyInfo(tenant.id, realmId, tokens.access_token, tokens.refresh_token);
+            if (info?.CompanyName) {
+              await db.from("tenants").update({ company_name: info.CompanyName }).eq("id", tenant.id);
+              tenant.company_name = info.CompanyName;
+            }
+          } catch { /* non-fatal */ }
+        }
 
         // Stripe: swap archive → active
         const { data: firm } = await db.from("firms").select("stripe_subscription_id").eq("id", firmId).single();
@@ -199,6 +203,16 @@ export async function GET(req: NextRequest) {
       } else {
         const result = await db.from("tenants").upsert(upsertData, { onConflict: "qbo_realm_id" }).select().single();
         tenant = result.data;
+        // Fetch company name with real tenant ID
+        if (tenant && !tenant.company_name) {
+          try {
+            const info = await fetchCompanyInfo(tenant.id, realmId, tokens.access_token, tokens.refresh_token);
+            if (info?.CompanyName) {
+              await db.from("tenants").update({ company_name: info.CompanyName }).eq("id", tenant.id);
+              tenant.company_name = info.CompanyName;
+            }
+          } catch { /* non-fatal */ }
+        }
       }
 
       if (tenant) {
