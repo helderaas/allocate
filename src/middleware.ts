@@ -12,6 +12,7 @@ const PUBLIC_ROUTES = [
   "/blog",
   "/auth",
   "/api/auth",
+  "/api/auth/restore",
   "/api/stripe/webhook",
   "/api/stripe/restore",
   "/subscription",
