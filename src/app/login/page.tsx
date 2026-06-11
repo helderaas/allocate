@@ -3,20 +3,21 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-export default async function LoginPage() {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ signedOut?: string }> }) {
+  const { signedOut } = await searchParams;
   const cookieStore = await cookies();
   const userId = cookieStore.get("user_id")?.value ?? cookieStore.get("sb_access_token")?.value;
   const firmId = cookieStore.get("firm_id")?.value;
   const intuitSub = cookieStore.get("intuit_sub")?.value;
 
-  // Active session — go straight to dashboard
-  if (userId && firmId) {
-    redirect("/dashboard");
-  }
-
-  // Has intuit_sub cookie — restore session without OAuth
-  if (intuitSub) {
-    redirect("/api/auth/restore");
+  // Only auto-redirect if not explicitly signed out
+  if (!signedOut) {
+    if (userId && firmId) {
+      redirect("/dashboard");
+    }
+    if (intuitSub) {
+      redirect("/api/auth/restore");
+    }
   }
 
   return (
@@ -27,7 +28,6 @@ export default async function LoginPage() {
         </div>
         <div className="bg-white rounded-2xl border border-gray-200 p-8 shadow-sm flex flex-col items-center gap-6">
 
-          {/* New user — start free trial */}
           <div className="w-full text-center border-b border-gray-100 pb-6">
             <p className="text-sm font-medium text-gray-700 mb-1">New to Allocate?</p>
             <p className="text-xs text-gray-400 mb-4">Connect your QuickBooks Online account to get started.</p>
@@ -38,7 +38,6 @@ export default async function LoginPage() {
             <p className="text-xs text-gray-400 mt-3">14-day free trial · No credit card required</p>
           </div>
 
-          {/* Returning user — bypass OAuth */}
           <div className="w-full text-center">
             <p className="text-sm font-medium text-gray-700 mb-1">Already have an account?</p>
             <p className="text-xs text-gray-400 mb-4">Sign in directly without reconnecting QuickBooks.</p>
