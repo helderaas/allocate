@@ -13,13 +13,23 @@ export async function GET(req: NextRequest) {
     .eq("id", firmId)
     .single();
 
-  // If firm has an active Stripe subscription, return it
+  // Active Stripe subscription
   if (firm?.subscription_status === "active" || firm?.subscription_status === "trialing") {
     return NextResponse.json({ subscription: firm });
   }
 
-  // Check if firm has a connected firm company (free access)
-  // Firm connections get dashboard access without a Stripe subscription
+  // Check for client tenants (paid connections)
+  const { data: clientTenants } = await db
+    .from("tenants")
+    .select("id")
+    .eq("firm_id", firmId)
+    .eq("is_firm_company", false)
+    .eq("qbo_connected", true)
+    .limit(1);
+
+  const hasClients = (clientTenants?.length ?? 0) > 0;
+
+  // Check for firm company (free access)
   const { data: firmTenant } = await db
     .from("tenants")
     .select("id")
@@ -30,11 +40,11 @@ export async function GET(req: NextRequest) {
     .single();
 
   if (firmTenant) {
-    // Grant access — firm connection is free
     return NextResponse.json({
       subscription: {
         subscription_status: "active",
-        is_firm_only: true, // flag so dashboard can show "add a client" prompt
+        // Only show firm-only banner if no client companies connected
+        is_firm_only: !hasClients,
       }
     });
   }
