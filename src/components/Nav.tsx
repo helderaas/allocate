@@ -111,7 +111,7 @@ export default function Nav() {
 
   const handleSignOut = async () => {
     await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
-    window.location.href = "/login";
+    window.location.href = "/login?signedOut=true";
   };
 
   const companyLabel = currentCompany?.company_name ?? "My Company";
