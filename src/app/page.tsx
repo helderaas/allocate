@@ -20,10 +20,10 @@ export default async function LandingPage() {
           <Link href="/blog" className="text-sm text-gray-600 hover:text-gray-900 font-medium">
             Blog
           </Link>
-          <Link href="/api/auth/intuit" className="text-sm text-gray-600 hover:text-gray-900 font-medium">
-            Sign in
+          <Link href="/api/auth/restore" className="text-sm text-gray-600 hover:text-gray-900 font-medium">
+            Returning Users
           </Link>
-          <Link href="/api/auth/intuit"
+          <Link href="/login"
             className="text-sm px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-lg font-medium transition-colors">
             Start free trial
           </Link>
@@ -42,7 +42,7 @@ export default async function LandingPage() {
           Allocate connects to QuickBooks Online and automatically calculates and posts journal entries for shared expenses — split by revenue percentage or fixed rules.
         </p>
         <div className="flex items-center justify-center gap-4 flex-wrap">
-          <Link href="/api/auth/intuit"
+          <Link href="/login"
             className="px-8 py-3.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-semibold text-base transition-colors shadow-sm">
             Start 14-day free trial
           </Link>
@@ -200,7 +200,7 @@ export default async function LandingPage() {
                 ))}
               </div>
             </div>
-            <Link href="/api/auth/intuit"
+            <Link href="/login"
               className="block w-full text-center py-3.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-semibold transition-colors">
               Start free 14-day trial
             </Link>
@@ -214,7 +214,7 @@ export default async function LandingPage() {
         <div className="max-w-2xl mx-auto px-6 text-center">
           <h2 className="text-3xl font-bold text-gray-900 mb-4">Ready to automate your month-end close?</h2>
           <p className="text-gray-500 mb-8">Connect your QuickBooks account and run your first allocation in under 5 minutes.</p>
-          <Link href="/api/auth/intuit"
+          <Link href="/login"
             className="inline-block px-8 py-3.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-semibold text-base transition-colors shadow-sm">
             Get started free
           </Link>
