@@ -22,14 +22,30 @@ export async function GET(req: NextRequest) {
       .single();
 
     if (intuitUser) {
-      const { data: tenant } = await db
+      // Default to firm's own company, fall back to most recent active tenant
+      let tenant = null;
+
+      const { data: firmTenant } = await db
         .from("tenants")
         .select("id")
         .eq("firm_id", intuitUser.firm_id)
+        .eq("is_firm_company", true)
         .eq("qbo_connected", true)
-        .order("created_at", { ascending: false })
-        .limit(1)
         .single();
+
+      if (firmTenant) {
+        tenant = firmTenant;
+      } else {
+        const { data: lastTenant } = await db
+          .from("tenants")
+          .select("id")
+          .eq("firm_id", intuitUser.firm_id)
+          .eq("qbo_connected", true)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+        tenant = lastTenant;
+      }
 
       const response = NextResponse.redirect(new URL("/dashboard", req.url));
       const isProd = process.env.NODE_ENV === "production";
@@ -45,7 +61,6 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // No cookie — fall back to OAuth (returning user with cleared browser)
-  // Use returnTo=dashboard so after OAuth they skip classify and go straight to dashboard
+  // No cookie — fall back to OAuth
   return NextResponse.redirect(new URL("/api/auth/intuit?returnTo=/dashboard&returning=true", req.url));
 }
