@@ -7,5 +7,6 @@ export async function POST() {
   response.cookies.delete("tenant_id");
   response.cookies.delete("firm_id");
   response.cookies.delete("user_id");
+  response.cookies.delete("intuit_sub");
   return response;
 }
