@@ -228,6 +228,10 @@ export async function GET(req: NextRequest) {
             await db.from("tenants").update({ is_firm_company: false }).eq("id", tenantId);
             const response = buildResponse(req, { userId }, firmId, tenantId, "/subscription/new", intuitSub);
             return response;
+          } else if (isReturningUser) {
+            // Returning user via OAuth fallback — skip classify, go to dashboard
+            const response = buildResponse(req, { userId }, firmId, tenantId, "/dashboard", intuitSub);
+            return response;
           } else {
             // First-time sign in — ask firm vs client
             const classifyUrl = "/connect-type?tenantId=" + tenantId;
@@ -238,11 +242,20 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Decode returnTo from state if present
+    // Decode returnTo and returning flag from state
     let redirectPath = "/dashboard";
+    let isReturningUser = false;
     if (state.startsWith("sso_")) {
       try {
-        redirectPath = Buffer.from(state.replace("sso_", ""), "base64").toString("utf8");
+        const decoded = Buffer.from(state.replace("sso_", ""), "base64").toString("utf8");
+        // Try new JSON format first, fall back to plain string
+        if (decoded.startsWith("{")) {
+          const parsed = JSON.parse(decoded);
+          redirectPath = parsed.returnTo ?? "/dashboard";
+          isReturningUser = parsed.returning ?? false;
+        } else {
+          redirectPath = decoded;
+        }
         if (!redirectPath.startsWith("/") || redirectPath.startsWith("//")) redirectPath = "/dashboard";
       } catch { redirectPath = "/dashboard"; }
     }
