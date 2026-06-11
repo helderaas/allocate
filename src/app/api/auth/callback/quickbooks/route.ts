@@ -81,21 +81,23 @@ export async function GET(req: NextRequest) {
       .single();
 
     if (existingUser) {
-      // Returning user — restore session and go straight to dashboard
+      // Returning user — restore identity
       userId = existingUser.user_id;
       firmId = existingUser.firm_id;
 
-      // Get their most recent active tenant
-      const { data: lastTenant } = await db
-        .from("tenants")
-        .select("id")
-        .eq("firm_id", firmId)
-        .eq("qbo_connected", true)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single();
-
-      return buildResponse(req, { userId }, firmId, lastTenant?.id ?? null, "/dashboard", intuitSub);
+      // If no realmId (pure SSO sign-in, no QBO connection), go straight to dashboard
+      if (!realmId) {
+        const { data: lastTenant } = await db
+          .from("tenants")
+          .select("id")
+          .eq("firm_id", firmId)
+          .eq("qbo_connected", true)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+        return buildResponse(req, { userId }, firmId, lastTenant?.id ?? null, "/dashboard", intuitSub);
+      }
+      // Has realmId — fall through to upsert the QBO connection below
     } else {
       // New user — create Supabase auth user + firm
       const { data: newAuthUser, error: createError } = await db.auth.admin.createUser({
