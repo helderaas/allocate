@@ -24,19 +24,32 @@ export default async function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <Image src="/allocate-logo-primary.svg" alt="Allocate" width={160} height={36} className="mx-auto mb-6" priority />
-          <p className="text-gray-500 text-sm">Sign in to your account</p>
         </div>
         <div className="bg-white rounded-2xl border border-gray-200 p-8 shadow-sm flex flex-col items-center gap-6">
-          <p className="text-sm text-gray-600 text-center">
-            Allocate connects directly to QuickBooks Online. Sign in with your Intuit account to get started.
-          </p>
-          <a href="/api/auth/intuit" className="group flex justify-center">
-            <img src="/Sign_in_blue_btn_tall_default.svg" alt="Sign in with Intuit" width={220} className="group-hover:hidden" />
-            <img src="/Sign_in_blue_btn_tall_hover.svg" alt="Sign in with Intuit" width={220} className="hidden group-hover:block" />
-          </a>
-          <p className="text-xs text-gray-400 text-center">
-            New to Allocate? Signing in will create your account automatically.
-          </p>
+
+          {/* New user — start free trial */}
+          <div className="w-full text-center border-b border-gray-100 pb-6">
+            <p className="text-sm font-medium text-gray-700 mb-1">New to Allocate?</p>
+            <p className="text-xs text-gray-400 mb-4">Connect your QuickBooks Online account to get started.</p>
+            <a href="/api/auth/intuit" className="group flex justify-center">
+              <img src="/Sign_in_blue_btn_tall_default.svg" alt="Sign in with Intuit" width={220} className="group-hover:hidden" />
+              <img src="/Sign_in_blue_btn_tall_hover.svg" alt="Sign in with Intuit" width={220} className="hidden group-hover:block" />
+            </a>
+            <p className="text-xs text-gray-400 mt-3">14-day free trial · No credit card required</p>
+          </div>
+
+          {/* Returning user — bypass OAuth */}
+          <div className="w-full text-center">
+            <p className="text-sm font-medium text-gray-700 mb-1">Already have an account?</p>
+            <p className="text-xs text-gray-400 mb-4">Sign in directly without reconnecting QuickBooks.</p>
+            <a
+              href="/api/auth/restore"
+              className="w-full flex items-center justify-center px-6 py-2.5 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 rounded-xl text-sm font-medium transition-colors"
+            >
+              Sign in as returning user
+            </a>
+          </div>
+
         </div>
         <p className="text-center text-xs text-gray-400 mt-6">
           By signing in you agree to our{" "}
