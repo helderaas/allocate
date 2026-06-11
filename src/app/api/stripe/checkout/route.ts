@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
       price: process.env.STRIPE_PRICE_ID!,
       quantity,
     }],
-    success_url: `${siteUrl}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
+    success_url: siteUrl + "/api/stripe/restore?session_id={CHECKOUT_SESSION_ID}",
     cancel_url: `${siteUrl}/subscription/cancel`,
     metadata: { firm_id: firmId },
     subscription_data: {
