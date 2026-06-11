@@ -114,9 +114,7 @@ export default function Nav() {
     window.location.href = "/login";
   };
 
-  const companyLabel = currentCompany?.company_name
-    ?? currentCompany?.division_a_location_name
-    ?? "My Company";
+  const companyLabel = currentCompany?.company_name ?? "My Company";
 
   const qboAuthUrl = new URL("https://appcenter.intuit.com/connect/oauth2");
   qboAuthUrl.searchParams.set("client_id", process.env.NEXT_PUBLIC_QBO_CLIENT_ID ?? "");
@@ -125,7 +123,7 @@ export default function Nav() {
   qboAuthUrl.searchParams.set("scope", "com.intuit.quickbooks.accounting openid profile email");
   qboAuthUrl.searchParams.set("state", "add_company");
 
-  const companyName = (c: Company) => c.company_name ?? c.division_a_location_name ?? "Unnamed Company";
+  const companyName = (c: Company) => c.company_name ?? "Unnamed Company";
 
   return (
     <>
