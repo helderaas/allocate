@@ -173,11 +173,12 @@ export async function GET(req: NextRequest) {
         if (tenant && !tenant.company_name) {
           try {
             const info = await fetchCompanyInfo(tenant.id, realmId, tokens.access_token, tokens.refresh_token);
+            console.log("fetchCompanyInfo result:", JSON.stringify(info));
             if (info?.CompanyName) {
               await db.from("tenants").update({ company_name: info.CompanyName }).eq("id", tenant.id);
               tenant.company_name = info.CompanyName;
             }
-          } catch { /* non-fatal */ }
+          } catch (companyErr) { console.error("fetchCompanyInfo failed:", companyErr); }
         }
 
         // Stripe: swap archive → active
@@ -209,11 +210,12 @@ export async function GET(req: NextRequest) {
         if (tenant && !tenant.company_name) {
           try {
             const info = await fetchCompanyInfo(tenant.id, realmId, tokens.access_token, tokens.refresh_token);
+            console.log("fetchCompanyInfo result:", JSON.stringify(info));
             if (info?.CompanyName) {
               await db.from("tenants").update({ company_name: info.CompanyName }).eq("id", tenant.id);
               tenant.company_name = info.CompanyName;
             }
-          } catch { /* non-fatal */ }
+          } catch (companyErr) { console.error("fetchCompanyInfo failed:", companyErr); }
         }
       }
 
