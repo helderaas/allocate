@@ -248,26 +248,15 @@ function buildResponse(
   const response = NextResponse.redirect(new URL(redirectPath, req.url));
 
   // Store user identity in secure httpOnly cookie (no password needed for SSO users)
-  response.cookies.set("user_id", sessionData.userId, {
-    httpOnly: true, secure: process.env.NODE_ENV === "production",
-    sameSite: "lax", maxAge: 60 * 60 * 24 * 30, path: "/",
-  });
-  // Set sb_access_token to userId so middleware auth check passes
-  response.cookies.set("sb_access_token", sessionData.userId, {
-    httpOnly: true, secure: process.env.NODE_ENV === "production",
-    sameSite: "lax", maxAge: 60 * 60 * 24 * 7, path: "/",
-  });
+  const isProd = process.env.NODE_ENV === "production";
+  const cookieOpts = { httpOnly: true, secure: isProd, sameSite: "lax" as const, path: "/" };
 
-  response.cookies.set("firm_id", firmId, {
-    httpOnly: true, secure: process.env.NODE_ENV === "production",
-    sameSite: "lax", maxAge: 60 * 60 * 24 * 30, path: "/",
-  });
+  response.cookies.set("user_id", sessionData.userId, { ...cookieOpts, maxAge: 60 * 60 * 24 * 30 });
+  response.cookies.set("sb_access_token", sessionData.userId, { ...cookieOpts, maxAge: 60 * 60 * 24 * 30 });
+  response.cookies.set("firm_id", firmId, { ...cookieOpts, maxAge: 60 * 60 * 24 * 30 });
 
   if (tenantId) {
-    response.cookies.set("tenant_id", tenantId, {
-      httpOnly: true, secure: process.env.NODE_ENV === "production",
-      sameSite: "lax", maxAge: 60 * 60 * 24 * 30, path: "/",
-    });
+    response.cookies.set("tenant_id", tenantId, { ...cookieOpts, maxAge: 60 * 60 * 24 * 30 });
   }
 
   return response;
