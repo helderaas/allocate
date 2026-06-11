@@ -3,9 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const returnTo = searchParams.get("returnTo") ?? "/dashboard";
-  const realmId = searchParams.get("realmId"); // passed for returning users to skip company select
+  const returning = searchParams.get("returning") === "true";
 
-  // Validate returnTo to prevent open redirect
   const safeReturnTo = returnTo.startsWith("/") && !returnTo.startsWith("//") ? returnTo : "/dashboard";
 
   const url = new URL("https://appcenter.intuit.com/connect/oauth2");
@@ -14,14 +13,9 @@ export async function GET(req: NextRequest) {
   url.searchParams.set("response_type", "code");
   url.searchParams.set("scope", "com.intuit.quickbooks.accounting openid profile email");
 
-  if (realmId) {
-    // Returning user — include realmId to bypass company select screen
-    url.searchParams.set("realmId", realmId);
-    url.searchParams.set("state", "sso_" + Buffer.from(safeReturnTo).toString("base64"));
-  } else {
-    // New user — show company select
-    url.searchParams.set("state", "sso_" + Buffer.from(safeReturnTo).toString("base64"));
-  }
+  // Encode both returnTo and returning flag in state
+  const stateData = JSON.stringify({ returnTo: safeReturnTo, returning });
+  url.searchParams.set("state", "sso_" + Buffer.from(stateData).toString("base64"));
 
   return NextResponse.redirect(url.toString());
 }
