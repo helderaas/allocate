@@ -66,6 +66,7 @@ export async function GET(req: NextRequest) {
 
     // "add_company" state: already logged in, just adding another QBO company
     const isAddCompany = state === "add_company";
+    let isReturningUser = false; // will be updated after state parsing below
     const cookieUserId = req.cookies.get("user_id")?.value ?? req.cookies.get("sb_access_token")?.value;
     const cookieFirmId = req.cookies.get("firm_id")?.value;
 
@@ -244,7 +245,6 @@ export async function GET(req: NextRequest) {
 
     // Decode returnTo and returning flag from state
     let redirectPath = "/dashboard";
-    let isReturningUser = false;
     if (state.startsWith("sso_")) {
       try {
         const decoded = Buffer.from(state.replace("sso_", ""), "base64").toString("utf8");
@@ -252,7 +252,7 @@ export async function GET(req: NextRequest) {
         if (decoded.startsWith("{")) {
           const parsed = JSON.parse(decoded);
           redirectPath = parsed.returnTo ?? "/dashboard";
-          isReturningUser = parsed.returning ?? false;
+          isReturningUser = parsed.returning ?? false; // update the var declared above
         } else {
           redirectPath = decoded;
         }
