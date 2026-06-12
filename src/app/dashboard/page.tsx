@@ -41,6 +41,7 @@ export default function DashboardPage() {
 
   const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>("loading");
   const [isFirmOnly, setIsFirmOnly] = useState(false);
+  const [companyName, setCompanyName] = useState<string>("");
 
   useEffect(() => {
     fetch("/api/stripe/subscription", { credentials: "include" })
@@ -48,6 +49,13 @@ export default function DashboardPage() {
       .then(d => {
         setSubscriptionStatus(d.subscription?.subscription_status ?? "inactive");
         setIsFirmOnly(d.subscription?.is_firm_only ?? false);
+      });
+    fetch("/api/companies", { credentials: "include" })
+      .then(r => r.json())
+      .then(d => {
+        const tenantId = document.cookie.split("; ").find(c => c.startsWith("tenant_id="))?.split("=")[1];
+        const current = (d.companies ?? []).find((c: { id: string; company_name?: string }) => c.id === tenantId);
+        setCompanyName(current?.company_name ?? "");
       });
   }, []);
 
@@ -184,7 +192,7 @@ export default function DashboardPage() {
       <div className="max-w-3xl mx-auto py-10 px-4">
         {/* Header */}
         <div className="flex items-start justify-between mb-8">
-          <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">{companyName ? `${companyName} Dashboard` : "Dashboard"}</h1>
           <button
             onClick={handleNewAllocation}
             className="flex items-center gap-2 px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-medium text-sm"
@@ -193,30 +201,7 @@ export default function DashboardPage() {
           </button>
         </div>
 
-        {/* Firm-only banner — shown when no client companies connected yet */}
-        {isFirmOnly && (
-          <div className="bg-brand-50 border border-brand-200 rounded-xl p-4 mb-6 flex items-center justify-between gap-4 flex-wrap">
-            <div>
-              <p className="text-sm font-medium text-brand-800">Your firm's QuickBooks is connected</p>
-              <p className="text-xs text-brand-600 mt-0.5">Connect a client company to start running allocations for clients.</p>
-            </div>
-            <a
-              href={(() => {
-                const url = new URL("https://appcenter.intuit.com/connect/oauth2");
-                url.searchParams.set("client_id", process.env.NEXT_PUBLIC_QBO_CLIENT_ID ?? "");
-                url.searchParams.set("redirect_uri", process.env.NEXT_PUBLIC_QBO_REDIRECT_URI ?? "");
-                url.searchParams.set("response_type", "code");
-                url.searchParams.set("scope", "com.intuit.quickbooks.accounting openid profile email");
-                url.searchParams.set("state", "add_company");
-                return url.toString();
-              })()}
-              className="group flex items-center shrink-0"
-            >
-              <img src="/C2QB_green_btn_short_default.svg" alt="Connect to QuickBooks" width={180} className="group-hover:hidden" />
-              <img src="/C2QB_green_btn_short_hover.svg" alt="Connect to QuickBooks" width={180} className="hidden group-hover:block" />
-            </a>
-          </div>
-        )}
+
 
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-6 text-red-700 text-sm flex items-center justify-between gap-3">
