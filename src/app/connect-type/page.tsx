@@ -30,22 +30,17 @@ function ConnectTypeContent() {
       return;
     }
 
-    if (isFirmCompany) {
-      // Firm connection — no Stripe, go straight to dashboard
-      window.location.href = "/dashboard";
+    // All connections go to Stripe checkout — firm and client billed the same
+    const stripeRes = await fetch("/api/stripe/checkout", {
+      method: "POST",
+      credentials: "include",
+    });
+    const stripeData = await stripeRes.json();
+    if (stripeData.url) {
+      window.location.href = stripeData.url;
     } else {
-      // Client connection — start Stripe trial
-      const stripeRes = await fetch("/api/stripe/checkout", {
-        method: "POST",
-        credentials: "include",
-      });
-      const stripeData = await stripeRes.json();
-      if (stripeData.url) {
-        window.location.href = stripeData.url;
-      } else {
-        // Already subscribed — just go to dashboard
-        window.location.href = "/dashboard";
-      }
+      // Already subscribed — just go to dashboard
+      window.location.href = "/dashboard";
     }
   };
 
