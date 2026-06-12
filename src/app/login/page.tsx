@@ -35,7 +35,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
               <img src="/Sign_in_blue_btn_tall_default.svg" alt="Sign in with Intuit" width={220} className="group-hover:hidden" />
               <img src="/Sign_in_blue_btn_tall_hover.svg" alt="Sign in with Intuit" width={220} className="hidden group-hover:block" />
             </a>
-            <p className="text-xs text-gray-400 mt-3">14-day free trial · No credit card required</p>
+            <p className="text-xs text-gray-400 mt-3">14-day free trial · Cancel anytime</p>
           </div>
 
           <div className="w-full text-center">
