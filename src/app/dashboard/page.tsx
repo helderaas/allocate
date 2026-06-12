@@ -5,7 +5,7 @@ import Nav from "@/components/Nav";
 import UpgradeWall from "@/components/UpgradeWall";
 import {
   Calendar, CheckCircle, Clock,
-  Loader2, Plus, ChevronRight, BookOpen, Trash2, Play, X, XCircle, History,
+  Loader2, Plus, ChevronRight, BookOpen, Trash2, Play, X, XCircle, History, UserX,
 } from "lucide-react";
 
 interface AllocationDraftRow {
@@ -55,10 +55,13 @@ export default function DashboardPage() {
       fetch("/api/auth/me", { credentials: "include" }).then(r => r.json()),
       fetch("/api/companies", { credentials: "include" }).then(r => r.json()),
     ]).then(([me, companiesData]) => {
-      const current = (companiesData.companies ?? []).find(
+      const list = companiesData.companies ?? [];
+      const current = list.find(
         (c: { id: string; company_name?: string }) => c.id === me.tenantId
       );
       setCompanyName(current?.company_name ?? "");
+      setCompaniesList(list);
+      setCompaniesLoaded(true);
     });
   }, []);
 
@@ -68,6 +71,10 @@ export default function DashboardPage() {
   const [qboReconnectRequired, setQboReconnectRequired] = useState(false);
   const [voidingId, setVoidingId] = useState<string | null>(null);
   const [showVoidConfirm, setShowVoidConfirm] = useState<string | null>(null);
+  const [showDeleteAccountConfirm, setShowDeleteAccountConfirm] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [companiesLoaded, setCompaniesLoaded] = useState(false);
+  const [companiesList, setCompaniesList] = useState<{ id: string }[]>([]);
 
   const loadHistory = useCallback(async () => {
     try {
@@ -171,6 +178,17 @@ export default function DashboardPage() {
     setShowVoidConfirm(null);
   };
 
+  const handleDeleteAccount = async () => {
+    setDeletingAccount(true);
+    try {
+      await fetch("/api/account/delete", { method: "POST", credentials: "include" });
+      window.location.href = "/login?deleted=true";
+    } catch (e) {
+      console.error("Delete account error:", e);
+      setDeletingAccount(false);
+    }
+  };
+
   const periodLabel = (period: string) =>
     new Date(period + "-02").toLocaleString("default", { month: "long", year: "numeric" });
 
@@ -186,6 +204,78 @@ export default function DashboardPage() {
   // Show upgrade wall for inactive/canceled subscriptions
   if (subscriptionStatus !== "active") {
     return <UpgradeWall />;
+  }
+
+  // Empty state — no companies connected
+  if (companiesLoaded && companiesList.length === 0) {
+    const qboUrl = new URL("https://appcenter.intuit.com/connect/oauth2");
+    qboUrl.searchParams.set("client_id", process.env.NEXT_PUBLIC_QBO_CLIENT_ID ?? "");
+    qboUrl.searchParams.set("redirect_uri", process.env.NEXT_PUBLIC_QBO_REDIRECT_URI ?? "");
+    qboUrl.searchParams.set("response_type", "code");
+    qboUrl.searchParams.set("scope", "com.intuit.quickbooks.accounting openid profile email");
+    qboUrl.searchParams.set("state", "add_company");
+
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Nav />
+        <div className="max-w-md mx-auto py-20 px-4 flex flex-col items-center text-center">
+          <div className="w-16 h-16 bg-brand-50 rounded-2xl flex items-center justify-center mb-6">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-brand-500">
+              <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+              <polyline points="13 2 13 9 20 9" />
+            </svg>
+          </div>
+          <h1 className="text-xl font-semibold text-gray-900 mb-2">No companies connected</h1>
+          <p className="text-sm text-gray-500 mb-8">Connect a QuickBooks Online company to start running allocations.</p>
+
+          <a href={qboUrl.toString()} className="group mb-4">
+            <img src="/C2QB_green_btn_med_default.svg" alt="Connect to QuickBooks" width={200} className="group-hover:hidden" />
+            <img src="/C2QB_green_btn_med_hover.svg" alt="Connect to QuickBooks" width={200} className="hidden group-hover:block" />
+          </a>
+
+          <button
+            onClick={() => setShowDeleteAccountConfirm(true)}
+            className="text-xs text-gray-400 hover:text-red-500 flex items-center gap-1.5 mt-4"
+          >
+            <UserX size={13} /> Delete my account
+          </button>
+        </div>
+
+        {showDeleteAccountConfirm && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+            <div className="bg-white rounded-2xl border border-gray-200 w-full max-w-md p-6 shadow-xl">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-base font-semibold text-gray-900">Delete account?</h2>
+                <button onClick={() => setShowDeleteAccountConfirm(false)} className="text-gray-400 hover:text-gray-600">
+                  <X size={18} />
+                </button>
+              </div>
+              <p className="text-sm text-red-600 font-medium mb-2">⚠️ This action is permanent and cannot be undone.</p>
+              <ul className="text-sm text-gray-500 list-disc list-inside space-y-1 mb-6">
+                <li>Your account and all data will be permanently deleted</li>
+                <li>Any active subscription will be cancelled</li>
+                <li>You will not be able to recover your account</li>
+              </ul>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowDeleteAccountConfirm(false)}
+                  className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50"
+                >
+                  Keep my account
+                </button>
+                <button
+                  onClick={handleDeleteAccount}
+                  disabled={deletingAccount}
+                  className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-medium disabled:opacity-60"
+                >
+                  {deletingAccount ? "Deleting..." : "Delete forever"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
   }
 
   return (
