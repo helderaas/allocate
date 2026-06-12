@@ -66,7 +66,24 @@ export async function GET(req: NextRequest) {
 
     // "add_company" state: already logged in, just adding another QBO company
     const isAddCompany = state === "add_company";
-    let isReturningUser = false; // will be updated after state parsing below
+
+    // Parse state FIRST so isReturningUser is available throughout
+    let isReturningUser = false;
+    let redirectPath = "/dashboard";
+    if (state.startsWith("sso_")) {
+      try {
+        const decoded = Buffer.from(state.replace("sso_", ""), "base64").toString("utf8");
+        if (decoded.startsWith("{")) {
+          const parsed = JSON.parse(decoded);
+          redirectPath = parsed.returnTo ?? "/dashboard";
+          isReturningUser = parsed.returning ?? false;
+        } else {
+          redirectPath = decoded;
+        }
+        if (!redirectPath.startsWith("/") || redirectPath.startsWith("//")) redirectPath = "/dashboard";
+      } catch { redirectPath = "/dashboard"; }
+    }
+
     const cookieUserId = req.cookies.get("user_id")?.value ?? req.cookies.get("sb_access_token")?.value;
     const cookieFirmId = req.cookies.get("firm_id")?.value;
 
@@ -137,7 +154,6 @@ export async function GET(req: NextRequest) {
         email: userInfo.email,
       });
     }
-    } // end isAddCompany else
 
     // Sign in as the user to get a valid session token
     // We use Supabase admin to generate a one-time link and then exchange it
@@ -243,22 +259,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Decode returnTo and returning flag from state
-    let redirectPath = "/dashboard";
-    if (state.startsWith("sso_")) {
-      try {
-        const decoded = Buffer.from(state.replace("sso_", ""), "base64").toString("utf8");
-        // Try new JSON format first, fall back to plain string
-        if (decoded.startsWith("{")) {
-          const parsed = JSON.parse(decoded);
-          redirectPath = parsed.returnTo ?? "/dashboard";
-          isReturningUser = parsed.returning ?? false; // update the var declared above
-        } else {
-          redirectPath = decoded;
-        }
-        if (!redirectPath.startsWith("/") || redirectPath.startsWith("//")) redirectPath = "/dashboard";
-      } catch { redirectPath = "/dashboard"; }
-    }
+    // redirectPath and isReturningUser already parsed above
 
     // Default to firm company for tenant_id cookie if available
     let defaultTenantId = tenantId;
