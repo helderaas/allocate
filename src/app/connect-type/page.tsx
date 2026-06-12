@@ -73,7 +73,7 @@ function ConnectTypeContent() {
               </div>
               <div>
                 <p className="font-semibold text-gray-900 mb-1">My firm's own QuickBooks</p>
-                <p className="text-sm text-gray-500">This is your accounting firm's internal books. Free with any active client subscription.</p>
+                <p className="text-sm text-gray-500">This is your accounting firm's internal books. $17/month after a 14-day free trial.</p>
               </div>
             </div>
           </button>
