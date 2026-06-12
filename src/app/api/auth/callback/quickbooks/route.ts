@@ -154,6 +154,7 @@ export async function GET(req: NextRequest) {
         email: userInfo.email,
       });
     }
+    } // end isAddCompany else
 
     // Sign in as the user to get a valid session token
     // We use Supabase admin to generate a one-time link and then exchange it
