@@ -164,6 +164,8 @@ export async function GET(req: NextRequest) {
           user_metadata: { intuit_sub: intuitSub },
         });
 
+        if (createError) console.error("createUser failed:", JSON.stringify(createError));
+
         if (createError || !newAuth.user) {
           const { data: { users } } = await db.auth.admin.listUsers();
           const existing = users.find(u => u.email === userInfo.email);
@@ -176,19 +178,25 @@ export async function GET(req: NextRequest) {
           newUserId = newAuth.user.id;
         }
 
-        const { data: newFirm } = await db.from("firms")
+        const { data: newFirm, error: firmError } = await db.from("firms")
           .insert({ name: userInfo.email, owner_user_id: newUserId })
           .select("id").single();
 
-        firmId = newFirm!.id;
+        if (firmError || !newFirm) {
+          console.error("firms insert failed:", JSON.stringify(firmError));
+          return NextResponse.redirect(new URL("/login?error=firm_create_failed", req.url));
+        }
+
+        firmId = newFirm.id;
         userId = newUserId;
 
-        await db.from("intuit_users").insert({
+        const { error: intuitUserError } = await db.from("intuit_users").insert({
           intuit_sub: intuitSub,
           user_id: userId,
           firm_id: firmId,
           email: userInfo.email,
         });
+        if (intuitUserError) console.error("intuit_users insert failed:", JSON.stringify(intuitUserError));
       }
     }
 
@@ -219,7 +227,8 @@ export async function GET(req: NextRequest) {
       // Handle Stripe: swap archive → active
       await handleStripeReconnect(db, firmId);
     } else {
-      const { data } = await db.from("tenants").upsert(upsertData, { onConflict: "qbo_realm_id" }).select().single();
+      const { data, error: upsertError } = await db.from("tenants").upsert(upsertData, { onConflict: "qbo_realm_id" }).select().single();
+      if (upsertError) console.error("tenants upsert failed:", JSON.stringify(upsertError));
       tenant = data;
     }
 
