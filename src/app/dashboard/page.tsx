@@ -50,13 +50,16 @@ export default function DashboardPage() {
         setSubscriptionStatus(d.subscription?.subscription_status ?? "inactive");
         setIsFirmOnly(d.subscription?.is_firm_only ?? false);
       });
-    fetch("/api/companies", { credentials: "include" })
-      .then(r => r.json())
-      .then(d => {
-        const tenantId = document.cookie.split("; ").find(c => c.startsWith("tenant_id="))?.split("=")[1];
-        const current = (d.companies ?? []).find((c: { id: string; company_name?: string }) => c.id === tenantId);
-        setCompanyName(current?.company_name ?? "");
-      });
+    // Fetch current company name via me route (avoids reading httpOnly cookies)
+    Promise.all([
+      fetch("/api/auth/me", { credentials: "include" }).then(r => r.json()),
+      fetch("/api/companies", { credentials: "include" }).then(r => r.json()),
+    ]).then(([me, companiesData]) => {
+      const current = (companiesData.companies ?? []).find(
+        (c: { id: string; company_name?: string }) => c.id === me.tenantId
+      );
+      setCompanyName(current?.company_name ?? "");
+    });
   }, []);
 
   const [showLaunchModal, setShowLaunchModal] = useState(false);
