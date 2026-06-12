@@ -13,12 +13,7 @@ export async function GET(req: NextRequest) {
     .eq("id", firmId)
     .single();
 
-  // Active Stripe subscription
-  if (firm?.subscription_status === "active" || firm?.subscription_status === "trialing") {
-    return NextResponse.json({ subscription: firm });
-  }
-
-  // Check for client tenants (paid connections)
+  // Check for client tenants regardless of subscription status
   const { data: clientTenants } = await db
     .from("tenants")
     .select("id")
@@ -28,6 +23,16 @@ export async function GET(req: NextRequest) {
     .limit(1);
 
   const hasClients = (clientTenants?.length ?? 0) > 0;
+
+  // Active Stripe subscription — still check is_firm_only
+  if (firm?.subscription_status === "active" || firm?.subscription_status === "trialing") {
+    return NextResponse.json({
+      subscription: {
+        ...firm,
+        is_firm_only: !hasClients,
+      }
+    });
+  }
 
   // Check for firm company (free access)
   const { data: firmTenant } = await db
@@ -43,7 +48,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       subscription: {
         subscription_status: "active",
-        // Only show firm-only banner if no client companies connected
         is_firm_only: !hasClients,
       }
     });
