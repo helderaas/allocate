@@ -9,7 +9,6 @@ import { QBOTokens } from "@/types";
 
 interface IntuitTokens extends QBOTokens {
   id_token?: string;
-  x_refresh_token_expires_in?: number;
 }
 
 interface IntuitUserInfo {
