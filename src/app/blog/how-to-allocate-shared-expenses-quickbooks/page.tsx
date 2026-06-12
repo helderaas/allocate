@@ -213,7 +213,7 @@ export default function Post() {
               className="inline-flex items-center gap-2 px-6 py-3 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-semibold text-sm transition-colors">
               Start free trial <ArrowRight size={14} />
             </Link>
-            <p className="text-xs text-gray-400 mt-3">No credit card required · Cancel anytime</p>
+            <p className="text-xs text-gray-400 mt-3">14-day free trial · Cancel anytime</p>
           </div>
         </div>
       </article>
