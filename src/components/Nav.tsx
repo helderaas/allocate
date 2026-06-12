@@ -217,7 +217,7 @@ export default function Nav() {
         </div>
 
         <div className="flex items-center gap-4">
-          {subscriptionStatus === "active" && (
+          {(subscriptionStatus === "active" || subscriptionStatus === "trialing") && (
             <button onClick={handleManageBilling}
               className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1">
               <CreditCard size={14} /> Billing
