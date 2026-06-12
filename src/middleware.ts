@@ -10,6 +10,7 @@ const PUBLIC_ROUTES = [
   "/privacy",
   "/terms",
   "/blog",
+  "/support",
   "/auth",
   "/api/auth",
   "/api/auth/restore",
