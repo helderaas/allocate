@@ -202,7 +202,7 @@ export default function DashboardPage() {
   }
 
   // Show upgrade wall for inactive/canceled subscriptions
-  if (subscriptionStatus !== "active") {
+  if (subscriptionStatus !== "active" && subscriptionStatus !== "trialing") {
     return <UpgradeWall />;
   }
 
