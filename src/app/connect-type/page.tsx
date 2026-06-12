@@ -55,7 +55,7 @@ function ConnectTypeContent() {
         <div className="text-center mb-8">
           <Image src="/allocate-logo-primary.svg" alt="Allocate" width={160} height={36} className="mx-auto mb-4" priority />
           <h1 className="text-xl font-semibold text-gray-900">What did you just connect?</h1>
-          <p className="text-sm text-gray-500 mt-2">This helps us set up your billing correctly.</p>
+          <p className="text-sm text-gray-500 mt-2">This helps us organize your companies correctly.</p>
         </div>
 
         <div className="space-y-3">
