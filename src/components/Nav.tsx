@@ -162,7 +162,7 @@ export default function Nav() {
                               : <Building2 size={13} className={c.id === currentTenantId ? "text-brand-600" : "text-gray-400"} />
                             }
                           </div>
-                          <div className="flex-1 min-w-0">
+                          <div className="min-w-0 w-0 flex-1">
                             <p className="text-sm font-medium text-gray-900 truncate">{companyName(c)}</p>
                             <p className="text-xs text-gray-400 truncate">
                               {c.qbo_connected === false ? "Disconnected · Read only" : (
@@ -176,7 +176,7 @@ export default function Nav() {
                         </button>
 
                         {/* Actions */}
-                        <div className="flex items-center gap-1 shrink-0">
+                        <div className="flex items-center gap-1 shrink-0 ml-1">
                           {c.qbo_connected === false ? (
                             <>
                               <button onClick={() => handleReconnect(c)} title="Reconnect QBO"
