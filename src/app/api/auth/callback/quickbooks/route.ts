@@ -260,8 +260,22 @@ export async function GET(req: NextRequest) {
       } catch { redirectPath = "/dashboard"; }
     }
 
+    // Default to firm company for tenant_id cookie if available
+    let defaultTenantId = tenantId;
+    if (!defaultTenantId || defaultTenantId !== tenantId) {
+      const { data: firmTenant } = await db
+        .from("tenants")
+        .select("id")
+        .eq("firm_id", firmId)
+        .eq("is_firm_company", true)
+        .eq("qbo_connected", true)
+        .limit(1)
+        .single();
+      if (firmTenant) defaultTenantId = firmTenant.id;
+    }
+
     // If no tenant yet (SSO-only, no QBO connected), go to dashboard which will prompt connect
-    return buildResponse(req, { userId }, firmId, tenantId, redirectPath, intuitSub);
+    return buildResponse(req, { userId }, firmId, defaultTenantId, redirectPath, intuitSub);
 
   } catch (err) {
     console.error("QBO/SSO callback error:", err);
