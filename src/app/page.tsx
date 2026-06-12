@@ -51,7 +51,7 @@ export default async function LandingPage() {
             Sign in
           </Link>
         </div>
-        <p className="text-sm text-gray-400 mt-4">No credit card required during trial · Cancel anytime</p>
+        <p className="text-sm text-gray-400 mt-4">14-day free trial · Cancel anytime</p>
       </section>
 
       {/* How it works */}
@@ -204,7 +204,7 @@ export default async function LandingPage() {
               className="block w-full text-center py-3.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-semibold transition-colors">
               Start free 14-day trial
             </Link>
-            <p className="text-center text-xs text-gray-400 mt-3">No credit card required during trial</p>
+            <p className="text-center text-xs text-gray-400 mt-3">14-day free trial · Cancel anytime</p>
           </div>
         </div>
       </section>
