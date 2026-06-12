@@ -24,12 +24,29 @@ export async function GET(req: NextRequest) {
 
     const { data: firm } = await db
       .from("firms")
-      .select("owner_user_id")
+      .select("owner_user_id, stripe_subscription_id")
       .eq("id", firmId)
       .single();
 
     if (!firm) {
       return NextResponse.redirect(new URL("/login", req.url));
+    }
+
+    // Immediately update subscription status so dashboard doesn't show UpgradeWall
+    // while waiting for the webhook to fire
+    if (session.subscription) {
+      try {
+        const sub = await stripe.subscriptions.retrieve(session.subscription as string);
+        await db.from("firms").update({
+          stripe_subscription_id: sub.id,
+          stripe_customer_id: session.customer as string,
+          subscription_status: sub.status,
+          subscription_quantity: sub.items.data[0]?.quantity ?? 1,
+          subscription_current_period_end: new Date((sub as unknown as { current_period_end: number }).current_period_end * 1000).toISOString(),
+        }).eq("id", firmId);
+      } catch (e) {
+        console.error("Failed to eagerly update subscription status:", e);
+      }
     }
 
     // Get the most recent tenant for this firm
