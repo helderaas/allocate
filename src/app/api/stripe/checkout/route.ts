@@ -51,14 +51,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ url: portalSession.url });
   }
 
-  const clientCount = (firm.tenants ?? []).filter((t: { is_firm_company: boolean }) => !t.is_firm_company).length;
-
-  // No client companies — firm-only account, no subscription needed
-  if (clientCount === 0) {
-    return NextResponse.json({ url: null });
-  }
-
-  const quantity = clientCount;
+  // Count all connected companies (firm + clients) — all billed at $17/month
+  const quantity = Math.max(1, (firm.tenants ?? []).length);
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://allocateapp.net";
 
   // Create or retrieve Stripe customer
