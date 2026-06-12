@@ -30,17 +30,14 @@ function ConnectTypeContent() {
       return;
     }
 
-    // All connections go to Stripe checkout — firm and client billed the same
-    const stripeRes = await fetch("/api/stripe/checkout", {
-      method: "POST",
-      credentials: "include",
-    });
+    // Show subscription page — already subscribed users go straight to dashboard
+    const stripeRes = await fetch("/api/stripe/subscription", { credentials: "include" });
     const stripeData = await stripeRes.json();
-    if (stripeData.url) {
-      window.location.href = stripeData.url;
-    } else {
-      // Already subscribed — just go to dashboard
+    const status = stripeData.subscription?.subscription_status;
+    if (status === "active" || status === "trialing") {
       window.location.href = "/dashboard";
+    } else {
+      window.location.href = "/subscription/new";
     }
   };
 
