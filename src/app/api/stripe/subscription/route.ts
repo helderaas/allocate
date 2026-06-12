@@ -34,24 +34,5 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // Check for firm company (free access)
-  const { data: firmTenant } = await db
-    .from("tenants")
-    .select("id")
-    .eq("firm_id", firmId)
-    .eq("is_firm_company", true)
-    .eq("qbo_connected", true)
-    .limit(1)
-    .single();
-
-  if (firmTenant) {
-    return NextResponse.json({
-      subscription: {
-        subscription_status: "active",
-        is_firm_only: !hasClients,
-      }
-    });
-  }
-
   return NextResponse.json({ subscription: firm ?? null });
 }
