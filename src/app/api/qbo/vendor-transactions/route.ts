@@ -77,6 +77,14 @@ export async function GET(req: NextRequest) {
     );
 
     const rows = data?.Rows?.Row ?? [];
+    // Log raw structure so we can see column layout and vendor name format
+    console.log("Total top-level rows:", rows.length);
+    const firstDataRow = rows.find(r => r.type === "Data");
+    if (firstDataRow) {
+      console.log("First data row ColData:", JSON.stringify(firstDataRow.ColData));
+    }
+    // Also log first few rows regardless of type
+    console.log("First 3 rows:", JSON.stringify(rows.slice(0, 3)));
     const accountTotals = parseTransactionList(rows, vendorName);
     const accounts = Object.entries(accountTotals)
       .map(([id, { accountName, total }]) => ({
