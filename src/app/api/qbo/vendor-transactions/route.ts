@@ -2,43 +2,52 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServiceSupabase } from "@/lib/supabase";
 import { qboRequest, QBOAuthExpiredError } from "@/lib/qbo-client";
 
-interface TxnRow {
-  ColData?: { value: string; id?: string }[];
-  type?: string;
-  group?: string;
-  Rows?: { Row?: TxnRow[] };
+interface QBOLine {
+  Amount?: number;
+  DetailType?: string;
+  AccountBasedExpenseLineDetail?: {
+    AccountRef?: { value: string; name: string };
+  };
+  JournalEntryLineDetail?: {
+    AccountRef?: { value: string; name: string };
+    PostingType?: string;
+  };
 }
 
-// TransactionList columns (0-indexed):
-// 0: Date, 1: Transaction Type, 2: Num, 3: Name (vendor/customer), 4: Memo,
-// 5: Account, 6: Split, 7: Amount
-function parseTransactionList(
-  rows: TxnRow[],
-  vendorName: string
+interface QBOTransaction {
+  Id: string;
+  TxnDate: string;
+  Line?: QBOLine[];
+  TotalAmt?: number;
+}
+
+function extractExpenseLines(
+  txns: QBOTransaction[]
 ): Record<string, { accountName: string; total: number }> {
   const accountMap: Record<string, { accountName: string; total: number }> = {};
 
-  for (const row of rows) {
-    if (row.type === "Data" && row.ColData) {
-      const cols = row.ColData;
-      const rowVendor = cols[4]?.value ?? "";
-      // Filter to only rows matching our vendor (case-insensitive)
-      if (rowVendor.toLowerCase() !== vendorName.toLowerCase()) continue;
-
-      const accountName = cols[7]?.value ?? "";
-      const accountId = cols[7]?.id ?? accountName;
-      const amount = Math.abs(parseFloat(cols[9]?.value ?? "0") || 0);
-
-      if (accountName && amount > 0) {
-        if (!accountMap[accountId]) accountMap[accountId] = { accountName, total: 0 };
-        accountMap[accountId].total += amount;
+  for (const txn of txns) {
+    for (const line of txn.Line ?? []) {
+      // Account-based expense lines (Bills, Checks, Expenses)
+      if (line.DetailType === "AccountBasedExpenseLineDetail") {
+        const ref = line.AccountBasedExpenseLineDetail?.AccountRef;
+        const amount = line.Amount ?? 0;
+        if (ref && amount > 0) {
+          const id = ref.value;
+          if (!accountMap[id]) accountMap[id] = { accountName: ref.name, total: 0 };
+          accountMap[id].total += amount;
+        }
       }
-    }
-    if (row.Rows?.Row?.length) {
-      const nested = parseTransactionList(row.Rows.Row, vendorName);
-      for (const [id, data] of Object.entries(nested)) {
-        if (!accountMap[id]) accountMap[id] = { accountName: data.accountName, total: 0 };
-        accountMap[id].total += data.total;
+      // Journal entry debit lines
+      if (line.DetailType === "JournalEntryLineDetail") {
+        const detail = line.JournalEntryLineDetail;
+        const ref = detail?.AccountRef;
+        const amount = line.Amount ?? 0;
+        if (ref && amount > 0 && detail?.PostingType === "Debit") {
+          const id = ref.value;
+          if (!accountMap[id]) accountMap[id] = { accountName: ref.name, total: 0 };
+          accountMap[id].total += amount;
+        }
       }
     }
   }
@@ -50,12 +59,13 @@ export async function GET(req: NextRequest) {
   if (!tenantId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
+  const vendorId = searchParams.get("vendorId");
   const vendorName = searchParams.get("vendorName");
   const startDate = searchParams.get("startDate");
   const endDate = searchParams.get("endDate");
 
-  if (!vendorName || !startDate || !endDate) {
-    return NextResponse.json({ error: "Missing vendorName, startDate, or endDate" }, { status: 400 });
+  if (!vendorId || !vendorName || !startDate || !endDate) {
+    return NextResponse.json({ error: "Missing required params" }, { status: 400 });
   }
 
   const db = getServiceSupabase();
@@ -63,56 +73,44 @@ export async function GET(req: NextRequest) {
   if (!tenant) return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
 
   try {
-    // Fetch full TransactionList — QBO does not support vendor filtering as a param,
-    // so we filter client-side by matching the Name column to vendorName
-    const data = await qboRequest<{ Rows: { Row: TxnRow[] } }>(
-      tenant.id, tenant.qbo_realm_id,
-      tenant.qbo_access_token, tenant.qbo_refresh_token,
-      "/reports/TransactionList",
-      {
-        start_date: startDate,
-        end_date: endDate,
-        accounting_method: "Accrual",
+    // Fetch Bills, Checks, and Expenses for this vendor in the date range
+    const txnTypes = [
+      { entity: "Bill", dateField: "TxnDate" },
+      { entity: "Purchase", dateField: "TxnDate" }, // covers Checks and Expenses
+    ];
+
+    const allTxns: QBOTransaction[] = [];
+
+    for (const { entity } of txnTypes) {
+      let position = 1;
+      const PAGE = 100;
+      while (true) {
+        const query = `SELECT * FROM ${entity} WHERE VendorRef = '${vendorId}' AND TxnDate >= '${startDate}' AND TxnDate <= '${endDate}' STARTPOSITION ${position} MAXRESULTS ${PAGE}`;
+        const data = await qboRequest<{ QueryResponse: Record<string, QBOTransaction[]> }>(
+          tenant.id, tenant.qbo_realm_id,
+          tenant.qbo_access_token, tenant.qbo_refresh_token,
+          "/query", { query }
+        );
+        const page = data.QueryResponse?.[entity] ?? [];
+        allTxns.push(...page);
+        if (page.length < PAGE) break;
+        position += PAGE;
       }
-    );
+    }
 
-    const rows = data?.Rows?.Row ?? [];
+    console.log(`Found ${allTxns.length} transactions for vendor ${vendorName}`);
 
-    // Log all unique vendor names from col[4] so we can match exactly
-    const allVendorNames = new Set<string>();
-    const collectVendors = (r: TxnRow[]) => {
-      for (const row of r) {
-        if (row.type === "Data" && row.ColData) allVendorNames.add(row.ColData[4]?.value ?? "");
-        if (row.Rows?.Row?.length) collectVendors(row.Rows.Row);
-      }
-    };
-    collectVendors(rows);
-    const vendorList = Array.from(allVendorNames).filter(Boolean).sort();
-    console.log("Looking for vendor:", JSON.stringify(vendorName));
-    console.log("Sample vendor names in report (first 20):", JSON.stringify(vendorList.slice(0, 20)));
-    console.log("Exact match found:", vendorList.includes(vendorName));
-
-    // Log the actual matched rows so we can see their column structure
-    const matchedRows: TxnRow[] = [];
-    const findMatched = (r: TxnRow[]) => {
-      for (const row of r) {
-        if (row.type === "Data" && row.ColData && row.ColData[4]?.value === vendorName) matchedRows.push(row);
-        if (row.Rows?.Row?.length) findMatched(row.Rows.Row);
-      }
-    };
-    findMatched(rows);
-    console.log("Matched row count:", matchedRows.length);
-    if (matchedRows.length > 0) console.log("First matched row ColData:", JSON.stringify(matchedRows[0].ColData));
-
-    const accountTotals = parseTransactionList(rows, vendorName);
+    const accountTotals = extractExpenseLines(allTxns);
     const accounts = Object.entries(accountTotals)
       .map(([id, { accountName, total }]) => ({
         id,
         accountName,
         total: Math.round(total * 100) / 100,
       }))
-      .filter(a => a.total > 0);
+      .filter(a => a.total > 0)
+      .sort((a, b) => b.total - a.total);
 
+    console.log("Parsed accounts:", JSON.stringify(accounts));
     return NextResponse.json({ accounts });
   } catch (err) {
     if (err instanceof QBOAuthExpiredError) {
