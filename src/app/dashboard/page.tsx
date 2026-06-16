@@ -165,7 +165,7 @@ export default function DashboardPage() {
           setQboReconnectRequired(true);
           setError("Your QuickBooks connection has expired. Please reconnect QuickBooks.");
         } else {
-          setError(data.error || `Void failed (status ${res.status}). Check your QBO connection.`);
+          setError(data.error || `Void failed (status ${res.status}). Check your QuickBooks Online connection.`);
         }
       } else {
         setTimeout(() => loadHistory(), 500);
@@ -519,7 +519,7 @@ export default function DashboardPage() {
                 {a.status === "posted" && (
                   showVoidConfirm === a.id ? (
                     <div className="flex items-center gap-1.5">
-                      <span className="text-xs text-gray-500">Mark as voided? (also void manually in QBO)</span>
+                      <span className="text-xs text-gray-500">Mark as voided? (also void manually in QuickBooks Online)</span>
                       <button
                         onClick={() => voidAllocation(a.id)}
                         disabled={voidingId === a.id}
