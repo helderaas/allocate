@@ -93,6 +93,13 @@ async function fetchAndSaveCompanyName(
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
+
+  // prompt=none failure — Intuit couldn't silently re-auth, send back to login
+  const oauthError = searchParams.get("error");
+  if (oauthError) {
+    console.log("OAuth error (likely prompt=none failure):", oauthError);
+    return NextResponse.redirect(new URL("/login", req.url));
+  }
   const code = searchParams.get("code");
   const realmId = searchParams.get("realmId");
   const state = searchParams.get("state") ?? "";
