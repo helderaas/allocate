@@ -2,32 +2,46 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServiceSupabase } from "@/lib/supabase";
 import { qboRequest, QBOAuthExpiredError, Division } from "@/lib/qbo-client";
 
-interface TxnRow {
-  ColData?: { value: string; id?: string }[];
-  type?: string;
-  Rows?: { Row?: TxnRow[] };
+interface QBOLine {
+  Amount?: number;
+  DetailType?: string;
+  AccountBasedExpenseLineDetail?: {
+    AccountRef?: { value: string; name: string };
+  };
+  JournalEntryLineDetail?: {
+    AccountRef?: { value: string; name: string };
+    PostingType?: string;
+  };
 }
 
-function parseTransactionList(rows: TxnRow[], vendorName: string): Record<string, { accountName: string; total: number }> {
+interface QBOTransaction {
+  Id: string;
+  TxnDate: string;
+  Line?: QBOLine[];
+}
+
+function extractExpenseLines(
+  txns: QBOTransaction[]
+): Record<string, { accountName: string; total: number }> {
   const map: Record<string, { accountName: string; total: number }> = {};
-  for (const row of rows) {
-    if (row.type === "Data" && row.ColData) {
-      const cols = row.ColData;
-      const rowVendor = cols[4]?.value ?? "";
-      if (rowVendor.toLowerCase() !== vendorName.toLowerCase()) continue;
-      const accountName = cols[7]?.value ?? "";
-      const accountId = cols[7]?.id ?? accountName;
-      const amount = Math.abs(parseFloat(cols[9]?.value ?? "0") || 0);
-      if (accountName && amount > 0) {
-        if (!map[accountId]) map[accountId] = { accountName, total: 0 };
-        map[accountId].total += amount;
+  for (const txn of txns) {
+    for (const line of txn.Line ?? []) {
+      if (line.DetailType === "AccountBasedExpenseLineDetail") {
+        const ref = line.AccountBasedExpenseLineDetail?.AccountRef;
+        const amount = line.Amount ?? 0;
+        if (ref && amount > 0) {
+          if (!map[ref.value]) map[ref.value] = { accountName: ref.name, total: 0 };
+          map[ref.value].total += amount;
+        }
       }
-    }
-    if (row.Rows?.Row?.length) {
-      const nested = parseTransactionList(row.Rows.Row, vendorName);
-      for (const [id, d] of Object.entries(nested)) {
-        if (!map[id]) map[id] = { accountName: d.accountName, total: 0 };
-        map[id].total += d.total;
+      if (line.DetailType === "JournalEntryLineDetail") {
+        const detail = line.JournalEntryLineDetail;
+        const ref = detail?.AccountRef;
+        const amount = line.Amount ?? 0;
+        if (ref && amount > 0 && detail?.PostingType === "Debit") {
+          if (!map[ref.value]) map[ref.value] = { accountName: ref.name, total: 0 };
+          map[ref.value].total += amount;
+        }
       }
     }
   }
@@ -43,7 +57,7 @@ export async function POST(req: NextRequest) {
   const {
     vendorId, vendorName,
     period, startDate, endDate, jeDate, description, journalNumber,
-    splitMap, // Record<divisionId, pct>
+    splitMap,
   } = await req.json();
 
   if (!vendorId || !startDate || !endDate || !splitMap) {
@@ -63,32 +77,37 @@ export async function POST(req: NextRequest) {
     qbo_class_id: d.qbo_class_id,
   }));
 
-  const trackingType: "location" | "class" = tenant.division_tracking_type ?? "location";
-
-  // Fetch vendor transactions
-  let txnData: { Rows: { Row: TxnRow[] } };
-  try {
-    // QBO TransactionList does not support vendor filtering via params — fetch all and filter client-side
-    txnData = await qboRequest<{ Rows: { Row: TxnRow[] } }>(
-      tenant.id, tenant.qbo_realm_id,
-      tenant.qbo_access_token, tenant.qbo_refresh_token,
-      "/reports/TransactionList",
-      { start_date: startDate, end_date: endDate, accounting_method: "Accrual" }
-    );
-  } catch (err) {
-    if (err instanceof QBOAuthExpiredError) {
-      return NextResponse.json({ error: "QBO session expired. Please reconnect.", qbo_reconnect_required: true }, { status: 401 });
+  // Fetch Bills and Purchases (Checks/Expenses) for this vendor
+  const allTxns: QBOTransaction[] = [];
+  for (const entity of ["Bill", "Purchase"]) {
+    let position = 1;
+    const PAGE = 100;
+    try {
+      while (true) {
+        const query = `SELECT * FROM ${entity} WHERE VendorRef = '${vendorId}' AND TxnDate >= '${startDate}' AND TxnDate <= '${endDate}' STARTPOSITION ${position} MAXRESULTS ${PAGE}`;
+        const data = await qboRequest<{ QueryResponse: Record<string, QBOTransaction[]> }>(
+          tenant.id, tenant.qbo_realm_id,
+          tenant.qbo_access_token, tenant.qbo_refresh_token,
+          "/query", { query }
+        );
+        const page = data.QueryResponse?.[entity] ?? [];
+        allTxns.push(...page);
+        if (page.length < PAGE) break;
+        position += PAGE;
+      }
+    } catch (err) {
+      if (err instanceof QBOAuthExpiredError) throw err;
+      console.error(`Error fetching ${entity}:`, err);
     }
-    return NextResponse.json({ error: "Failed to fetch vendor transactions" }, { status: 500 });
   }
 
-  const accountTotals = parseTransactionList(txnData?.Rows?.Row ?? [], vendorName);
+  const accountTotals = extractExpenseLines(allTxns);
   const accounts = Object.entries(accountTotals)
     .map(([id, { accountName, total }]) => ({ id, accountName, total: round2(total) }))
     .filter(a => a.total > 0);
 
   if (accounts.length === 0) {
-    return NextResponse.json({ error: `No transactions found for ${vendorName} in this period.` }, { status: 400 });
+    return NextResponse.json({ error: `No expense transactions found for ${vendorName} in this period.` }, { status: 400 });
   }
 
   // Build allocation lines — one per account
@@ -99,14 +118,13 @@ export async function POST(req: NextRequest) {
       divisionAmounts[div.id] = round2(acct.total * (pct / 100));
     });
 
-    // Legacy 2-div fields for review screen compatibility
     const divAAmount = divisionAmounts[divisions[0]?.id] ?? 0;
     const divBAmount = divisionAmounts[divisions[1]?.id] ?? 0;
 
     return {
       account_id: acct.id,
       account_name: acct.accountName,
-      account_type: "Expense", // vendor transactions are expenses
+      account_type: "Expense",
       rule_type: "fixed_split" as const,
       vendor_name: vendorName,
       total_amount: acct.total,
@@ -121,11 +139,10 @@ export async function POST(req: NextRequest) {
     };
   });
 
-  const totalDebits = lines.reduce((sum, l) => sum + l.division_a_amount + l.division_b_amount, 0);
-  const totalCredits = lines.reduce((sum, l) => sum + l.untagged_amount, 0);
+  const totalDebits = round2(lines.reduce((sum, l) => sum + l.division_a_amount + l.division_b_amount, 0));
+  const totalCredits = round2(lines.reduce((sum, l) => sum + l.untagged_amount, 0));
   const periodKey = period ?? startDate.slice(0, 7);
 
-  // Clear any existing vendor draft for this period + vendor
   await db.from("allocation_drafts").delete()
     .eq("tenant_id", tenantId)
     .eq("period", periodKey)
@@ -142,8 +159,8 @@ export async function POST(req: NextRequest) {
     vendor_id: vendorId,
     vendor_name: vendorName,
     lines: JSON.stringify(lines),
-    total_debits: round2(totalDebits),
-    total_credits: round2(totalCredits),
+    total_debits: totalDebits,
+    total_credits: totalCredits,
     je_date: jeDate || endDate,
     description: jeDescription,
     journal_number: journalNumber,
