@@ -115,7 +115,7 @@ function NewVendorAllocationContent() {
   useEffect(() => {
     if (!selectedVendor || !startDate || !endDate) { setPreviewAccounts([]); return; }
     setPreviewLoading(true);
-    fetch(`/api/qbo/vendor-transactions?vendorId=${selectedVendor.Id}&startDate=${startDate}&endDate=${endDate}`)
+    fetch(`/api/qbo/vendor-transactions?vendorId=${selectedVendor.Id}&vendorName=${encodeURIComponent(selectedVendor.DisplayName)}&startDate=${startDate}&endDate=${endDate}`)
       .then(r => r.json())
       .then(d => { setPreviewAccounts(d.accounts ?? []); setPreviewLoading(false); })
       .catch(() => setPreviewLoading(false));
