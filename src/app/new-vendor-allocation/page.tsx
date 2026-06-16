@@ -158,6 +158,14 @@ function NewVendorAllocationContent() {
     });
 
     const period = startDate.slice(0, 7);
+    // Compute the last division's auto value and add it to splitMap before sending
+    const completeSplitMap = { ...splitMap };
+    if (selectedDivisions.length > 0) {
+      const lastDiv = selectedDivisions[selectedDivisions.length - 1];
+      const otherSum = selectedDivisions.slice(0, -1).reduce((sum, d) => sum + (splitMap[d.id] ?? 0), 0);
+      completeSplitMap[lastDiv.id] = Math.max(0, 100 - otherSum);
+    }
+
     const res = await fetch("/api/allocations/run-vendor", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -168,7 +176,7 @@ function NewVendorAllocationContent() {
         jeDate: jeDate || endDate,
         description: description || `Vendor allocation - ${selectedVendor.DisplayName} - ${periodLabel}`,
         journalNumber,
-        splitMap,
+        splitMap: completeSplitMap,
       }),
     });
 
