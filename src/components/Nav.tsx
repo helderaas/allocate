@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { LogOut, ChevronDown, Building2, Plus, CreditCard, Wifi, WifiOff, Trash2, RefreshCw, AlertTriangle, X } from "lucide-react";
 
@@ -19,6 +19,7 @@ export default function Nav() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [currentTenantId, setCurrentTenantId] = useState<string>("");
   const [showSwitcher, setShowSwitcher] = useState(false);
+  const switcherRef = useRef<HTMLDivElement>(null);
   const [switching, setSwitching] = useState(false);
   const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
@@ -52,6 +53,18 @@ export default function Nav() {
   };
 
   useEffect(() => { loadCompanies(); }, []);
+
+  // Close switcher when clicking outside
+  useEffect(() => {
+    if (!showSwitcher) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (switcherRef.current && !switcherRef.current.contains(e.target as Node)) {
+        setShowSwitcher(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showSwitcher]);
 
   const currentCompany = companies.find(c => c.id === currentTenantId);
 
@@ -134,7 +147,7 @@ export default function Nav() {
           </a>
 
           {companies.length > 0 && (
-            <div className="relative">
+            <div className="relative" ref={switcherRef}>
               <button
                 onClick={() => setShowSwitcher(!showSwitcher)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-sm text-gray-700"
