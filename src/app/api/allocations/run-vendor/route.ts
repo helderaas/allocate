@@ -77,6 +77,7 @@ export async function POST(req: NextRequest) {
   if (!vendorId || !vendorName || !startDate || !endDate || !splitMap) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
+  console.log("run-vendor splitMap received:", JSON.stringify(splitMap));
 
   const db = getServiceSupabase();
   const { data: tenant } = await db.from("tenants").select("*").eq("id", tenantId).single();
@@ -88,6 +89,7 @@ export async function POST(req: NextRequest) {
     qbo_location_id: d.qbo_location_id,
     qbo_class_id: d.qbo_class_id,
   }));
+  console.log("run-vendor division IDs from DB:", divisions.map(d => d.id));
 
   try {
     // Step 1: Get transaction IDs from TransactionList
