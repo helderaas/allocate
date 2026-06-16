@@ -92,6 +92,18 @@ export async function GET(req: NextRequest) {
     console.log("Sample vendor names in report (first 20):", JSON.stringify(vendorList.slice(0, 20)));
     console.log("Exact match found:", vendorList.includes(vendorName));
 
+    // Log the actual matched rows so we can see their column structure
+    const matchedRows: TxnRow[] = [];
+    const findMatched = (r: TxnRow[]) => {
+      for (const row of r) {
+        if (row.type === "Data" && row.ColData && row.ColData[4]?.value === vendorName) matchedRows.push(row);
+        if (row.Rows?.Row?.length) findMatched(row.Rows.Row);
+      }
+    };
+    findMatched(rows);
+    console.log("Matched row count:", matchedRows.length);
+    if (matchedRows.length > 0) console.log("First matched row ColData:", JSON.stringify(matchedRows[0].ColData));
+
     const accountTotals = parseTransactionList(rows, vendorName);
     const accounts = Object.entries(accountTotals)
       .map(([id, { accountName, total }]) => ({
