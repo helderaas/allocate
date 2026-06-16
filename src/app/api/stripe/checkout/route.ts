@@ -42,17 +42,26 @@ export async function POST(req: NextRequest) {
 
   if (!userEmail) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  // If already subscribed, redirect to billing portal instead of new checkout
-  if (firm.stripe_subscription_id) {
-    const portalSession = await stripe.billingPortal.sessions.create({
-      customer: firm.stripe_customer_id!,
-      return_url: process.env.NEXT_PUBLIC_SITE_URL ? process.env.NEXT_PUBLIC_SITE_URL + "/dashboard" : "https://allocateapp.net/dashboard",
-    });
-    return NextResponse.json({ url: portalSession.url });
-  }
-
   // Count all connected companies (firm + clients) — all billed at $17/month
   const quantity = Math.max(1, (firm.tenants ?? []).length);
+
+  // If already subscribed, update the subscription quantity and return to dashboard
+  if (firm.stripe_subscription_id) {
+    try {
+      const sub = await stripe.subscriptions.retrieve(firm.stripe_subscription_id);
+      const item = sub.items.data.find(i => i.price.id === process.env.STRIPE_PRICE_ID);
+      if (item) {
+        await stripe.subscriptions.update(firm.stripe_subscription_id, {
+          items: [{ id: item.id, quantity }],
+          proration_behavior: "always_invoice",
+        });
+        await db.from("firms").update({ subscription_quantity: quantity }).eq("id", firmId);
+      }
+    } catch (e) {
+      console.error("Failed to update subscription quantity:", e);
+    }
+    return NextResponse.json({ url: null }); // null = go to dashboard
+  }
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://allocateapp.net";
 
   // Create or retrieve Stripe customer
