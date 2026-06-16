@@ -19,6 +19,12 @@ export async function GET(req: NextRequest) {
     url.searchParams.set("realmId", realmId);
   }
 
+  // For returning users, request no UI prompt — Intuit will silently re-auth
+  // if the session is still valid, or redirect back with an error we handle
+  if (returning) {
+    url.searchParams.set("prompt", "none");
+  }
+
   // Encode both returnTo and returning flag in state
   const stateData = JSON.stringify({ returnTo: safeReturnTo, returning });
   url.searchParams.set("state", "sso_" + Buffer.from(stateData).toString("base64"));
