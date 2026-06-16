@@ -62,5 +62,29 @@ export async function GET(req: NextRequest) {
   }
 
   // No cookie — fall back to OAuth
+  // Try to find the user's realmId so Intuit skips the company picker
+  if (intuitSub) {
+    const db = getServiceSupabase();
+    const { data: intuitUser } = await db
+      .from("intuit_users")
+      .select("firm_id")
+      .eq("intuit_sub", intuitSub)
+      .single();
+    if (intuitUser) {
+      const { data: tenant } = await db
+        .from("tenants")
+        .select("qbo_realm_id")
+        .eq("firm_id", intuitUser.firm_id)
+        .eq("is_firm_company", true)
+        .eq("qbo_connected", true)
+        .single();
+      if (tenant?.qbo_realm_id) {
+        return NextResponse.redirect(new URL(
+          `/api/auth/intuit?returnTo=/dashboard&returning=true&realmId=${tenant.qbo_realm_id}`,
+          req.url
+        ));
+      }
+    }
+  }
   return NextResponse.redirect(new URL("/api/auth/intuit?returnTo=/dashboard&returning=true", req.url));
 }
