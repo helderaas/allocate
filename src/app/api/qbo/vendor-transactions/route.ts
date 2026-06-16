@@ -77,6 +77,21 @@ export async function GET(req: NextRequest) {
     );
 
     const rows = data?.Rows?.Row ?? [];
+
+    // Log all unique vendor names from col[4] so we can match exactly
+    const allVendorNames = new Set<string>();
+    const collectVendors = (r: TxnRow[]) => {
+      for (const row of r) {
+        if (row.type === "Data" && row.ColData) allVendorNames.add(row.ColData[4]?.value ?? "");
+        if (row.Rows?.Row?.length) collectVendors(row.Rows.Row);
+      }
+    };
+    collectVendors(rows);
+    const vendorList = [...allVendorNames].filter(Boolean).sort();
+    console.log("Looking for vendor:", JSON.stringify(vendorName));
+    console.log("Sample vendor names in report (first 20):", JSON.stringify(vendorList.slice(0, 20)));
+    console.log("Exact match found:", vendorList.includes(vendorName));
+
     const accountTotals = parseTransactionList(rows, vendorName);
     const accounts = Object.entries(accountTotals)
       .map(([id, { accountName, total }]) => ({
