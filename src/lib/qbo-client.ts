@@ -95,11 +95,20 @@ export async function qboRequest<T>(
 export async function fetchAccounts(
   tenantId: string, realmId: string, accessToken: string, refreshToken: string
 ): Promise<QBOAccount[]> {
-  const data = await qboRequest<{ QueryResponse: { Account: QBOAccount[] } }>(
-    tenantId, realmId, accessToken, refreshToken, "/query",
-    { query: "SELECT Id, Name, FullyQualifiedName, AccountType, AccountSubType, Active, SubAccount FROM Account STARTPOSITION 1 MAXRESULTS 100" }
-  );
-  return data.QueryResponse?.Account ?? [];
+  const PAGE_SIZE = 1000;
+  let position = 1;
+  const allAccounts: QBOAccount[] = [];
+  while (true) {
+    const data = await qboRequest<{ QueryResponse: { Account?: QBOAccount[] } }>(
+      tenantId, realmId, accessToken, refreshToken, "/query",
+      { query: `SELECT Id, Name, FullyQualifiedName, AccountType, AccountSubType, Active, SubAccount FROM Account WHERE Active = true STARTPOSITION ${position} MAXRESULTS ${PAGE_SIZE}` }
+    );
+    const page = data.QueryResponse?.Account ?? [];
+    allAccounts.push(...page);
+    if (page.length < PAGE_SIZE) break;
+    position += PAGE_SIZE;
+  }
+  return allAccounts;
 }
 
 export async function fetchLocations(
