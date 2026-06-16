@@ -13,11 +13,11 @@ function parseTransactionList(rows: TxnRow[], vendorName: string): Record<string
   for (const row of rows) {
     if (row.type === "Data" && row.ColData) {
       const cols = row.ColData;
-      const rowVendor = cols[3]?.value ?? "";
+      const rowVendor = cols[4]?.value ?? "";
       if (rowVendor.toLowerCase() !== vendorName.toLowerCase()) continue;
-      const accountName = cols[5]?.value ?? "";
-      const accountId = cols[5]?.id ?? accountName;
-      const amount = Math.abs(parseFloat(cols[7]?.value ?? "0") || 0);
+      const accountName = cols[7]?.value ?? "";
+      const accountId = cols[7]?.id ?? accountName;
+      const amount = Math.abs(parseFloat(cols[9]?.value ?? "0") || 0);
       if (accountName && amount > 0) {
         if (!map[accountId]) map[accountId] = { accountName, total: 0 };
         map[accountId].total += amount;
