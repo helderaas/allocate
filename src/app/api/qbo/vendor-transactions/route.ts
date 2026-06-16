@@ -21,13 +21,13 @@ function parseTransactionList(
   for (const row of rows) {
     if (row.type === "Data" && row.ColData) {
       const cols = row.ColData;
-      const rowVendor = cols[3]?.value ?? "";
+      const rowVendor = cols[4]?.value ?? "";
       // Filter to only rows matching our vendor (case-insensitive)
       if (rowVendor.toLowerCase() !== vendorName.toLowerCase()) continue;
 
-      const accountName = cols[5]?.value ?? "";
-      const accountId = cols[5]?.id ?? accountName;
-      const amount = Math.abs(parseFloat(cols[7]?.value ?? "0") || 0);
+      const accountName = cols[7]?.value ?? "";
+      const accountId = cols[7]?.id ?? accountName;
+      const amount = Math.abs(parseFloat(cols[9]?.value ?? "0") || 0);
 
       if (accountName && amount > 0) {
         if (!accountMap[accountId]) accountMap[accountId] = { accountName, total: 0 };
@@ -77,14 +77,6 @@ export async function GET(req: NextRequest) {
     );
 
     const rows = data?.Rows?.Row ?? [];
-    // Log raw structure so we can see column layout and vendor name format
-    console.log("Total top-level rows:", rows.length);
-    const firstDataRow = rows.find(r => r.type === "Data");
-    if (firstDataRow) {
-      console.log("First data row ColData:", JSON.stringify(firstDataRow.ColData));
-    }
-    // Also log first few rows regardless of type
-    console.log("First 3 rows:", JSON.stringify(rows.slice(0, 3)));
     const accountTotals = parseTransactionList(rows, vendorName);
     const accounts = Object.entries(accountTotals)
       .map(([id, { accountName, total }]) => ({
