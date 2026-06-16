@@ -134,7 +134,7 @@ function OnboardingContent() {
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center gap-3 text-gray-500">
-      <Loader2 className="animate-spin" size={20} /> Loading your QBO data...
+      <Loader2 className="animate-spin" size={20} /> Loading your QuickBooks Online data...
     </div>
   );
 
@@ -156,7 +156,7 @@ function OnboardingContent() {
         {step === "locations" && (
           <div className="bg-white rounded-2xl border border-gray-200 p-6">
             <h2 className="font-medium text-gray-900 mb-1">Step 1 — Select your two divisions</h2>
-            <p className="text-sm text-gray-500 mb-4">Choose which QBO locations represent each division.</p>
+            <p className="text-sm text-gray-500 mb-4">Choose which QuickBooks Online locations represent each division.</p>
             <div className="space-y-2 mb-6">
               {locations.map(loc => (
                 <div key={loc.Id} className="flex items-center gap-3 p-3 rounded-xl border border-gray-100">
