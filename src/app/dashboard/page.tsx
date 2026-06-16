@@ -5,7 +5,7 @@ import Nav from "@/components/Nav";
 import UpgradeWall from "@/components/UpgradeWall";
 import {
   Calendar, CheckCircle, Clock,
-  Loader2, Plus, ChevronRight, BookOpen, Trash2, Play, X, XCircle, History, UserX,
+  Loader2, Plus, ChevronRight, BookOpen, Trash2, Play, X, XCircle, History, UserX, Store,
 } from "lucide-react";
 
 interface AllocationDraftRow {
@@ -291,6 +291,12 @@ export default function DashboardPage() {
             className="flex items-center gap-2 px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-medium text-sm"
           >
             <Plus size={16} /> New Allocation
+          </button>
+          <button
+            onClick={() => router.push("/new-vendor-allocation")}
+            className="flex items-center gap-2 px-5 py-2.5 bg-white hover:bg-gray-50 text-brand-700 border border-brand-200 rounded-xl font-medium text-sm"
+          >
+            <Store size={16} /> Vendor Allocation
           </button>
         </div>
 
