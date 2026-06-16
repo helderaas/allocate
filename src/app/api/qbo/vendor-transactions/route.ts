@@ -7,31 +7,26 @@ interface TxnRow {
   type?: string;
   group?: string;
   Rows?: { Row?: TxnRow[] };
+  Header?: unknown;
+  Columns?: unknown;
 }
 
-// Parse TransactionList report into { accountId -> { accountName, total } }
 function parseTransactionList(rows: TxnRow[]): Record<string, { accountName: string; total: number }> {
   const accountMap: Record<string, { accountName: string; total: number }> = {};
 
   for (const row of rows) {
     if (row.type === "Data" && row.ColData) {
-      // TransactionList columns (0-indexed):
-      // 0: Date, 1: Transaction Type, 2: Num, 3: Name, 4: Memo/Description,
-      // 5: Account (name), 6: Split, 7: Amount
       const cols = row.ColData;
+      // Log first row so we can see the column structure
       const accountName = cols[5]?.value ?? "";
-      const accountId = cols[5]?.id ?? accountName; // QBO sometimes puts id on ColData
+      const accountId = cols[5]?.id ?? accountName;
       const amountStr = cols[7]?.value ?? cols[6]?.value ?? "0";
       const amount = Math.abs(parseFloat(amountStr) || 0);
-
       if (accountName && amount !== 0) {
-        if (!accountMap[accountId]) {
-          accountMap[accountId] = { accountName, total: 0 };
-        }
+        if (!accountMap[accountId]) accountMap[accountId] = { accountName, total: 0 };
         accountMap[accountId].total += amount;
       }
     }
-    // Recurse into nested rows
     if (row.Rows?.Row?.length) {
       const nested = parseTransactionList(row.Rows.Row);
       for (const [id, data] of Object.entries(nested)) {
@@ -40,7 +35,6 @@ function parseTransactionList(rows: TxnRow[]): Record<string, { accountName: str
       }
     }
   }
-
   return accountMap;
 }
 
@@ -50,6 +44,7 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const vendorId = searchParams.get("vendorId");
+  const vendorName = searchParams.get("vendorName");
   const startDate = searchParams.get("startDate");
   const endDate = searchParams.get("endDate");
 
@@ -62,22 +57,34 @@ export async function GET(req: NextRequest) {
   if (!tenant) return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
 
   try {
-    const data = await qboRequest<{ Rows: { Row: TxnRow[] } }>(
+    // QBO TransactionList: try both vendor name and vendor ID approaches
+    // QBO expects "name" filter for vendor, not the internal ID in all versions
+    const params: Record<string, string> = {
+      start_date: startDate,
+      end_date: endDate,
+      accounting_method: "Accrual",
+      source_account_type: "AP",
+    };
+
+    // Add vendor filter — QBO uses the display name as the filter value
+    if (vendorName) {
+      params.vendor = vendorName;
+    }
+
+    const data = await qboRequest<{ Rows: { Row: TxnRow[] }; Columns?: unknown; Header?: unknown }>(
       tenant.id, tenant.qbo_realm_id,
       tenant.qbo_access_token, tenant.qbo_refresh_token,
       "/reports/TransactionList",
-      {
-        start_date: startDate,
-        end_date: endDate,
-        vendor: vendorId,
-        accounting_method: "Accrual",
-      }
+      params
     );
 
     const rows = data?.Rows?.Row ?? [];
-    const accountTotals = parseTransactionList(rows);
+    console.log("TransactionList rows count:", rows.length);
+    if (rows.length > 0) {
+      console.log("First row sample:", JSON.stringify(rows[0]).slice(0, 500));
+    }
 
-    // Convert to array, round totals, filter zero amounts
+    const accountTotals = parseTransactionList(rows);
     const accounts = Object.entries(accountTotals)
       .map(([id, { accountName, total }]) => ({
         id,
@@ -86,6 +93,7 @@ export async function GET(req: NextRequest) {
       }))
       .filter(a => a.total > 0);
 
+    console.log("Parsed accounts:", JSON.stringify(accounts));
     return NextResponse.json({ accounts });
   } catch (err) {
     if (err instanceof QBOAuthExpiredError) {
