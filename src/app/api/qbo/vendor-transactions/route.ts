@@ -87,7 +87,7 @@ export async function GET(req: NextRequest) {
       }
     };
     collectVendors(rows);
-    const vendorList = [...allVendorNames].filter(Boolean).sort();
+    const vendorList = Array.from(allVendorNames).filter(Boolean).sort();
     console.log("Looking for vendor:", JSON.stringify(vendorName));
     console.log("Sample vendor names in report (first 20):", JSON.stringify(vendorList.slice(0, 20)));
     console.log("Exact match found:", vendorList.includes(vendorName));
