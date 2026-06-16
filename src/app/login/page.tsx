@@ -28,7 +28,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         </div>
         <div className="bg-white rounded-2xl border border-gray-200 p-8 shadow-sm flex flex-col items-center gap-6">
 
-          <div className="w-full text-center border-b border-gray-100 pb-6">
+          <div className="w-full text-center">
             <p className="text-sm font-medium text-gray-700 mb-1">New to Allocate?</p>
             <p className="text-xs text-gray-400 mb-4">Connect your QuickBooks Online account to get started.</p>
             <a href="/api/auth/intuit" className="group flex justify-center">
@@ -38,16 +38,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
             <p className="text-xs text-gray-400 mt-3">14-day free trial · Cancel anytime</p>
           </div>
 
-          <div className="w-full text-center">
-            <p className="text-sm font-medium text-gray-700 mb-1">Already have an account?</p>
-            <p className="text-xs text-gray-400 mb-4">Sign in directly without reconnecting QuickBooks.</p>
-            <a
-              href="/api/auth/restore"
-              className="w-full flex items-center justify-center px-6 py-2.5 border border-brand-300 bg-brand-50 hover:bg-brand-100 text-brand-700 rounded-xl text-sm font-medium transition-colors"
-            >
-              Sign in as returning user
-            </a>
-          </div>
+
 
         </div>
         <p className="text-center text-xs text-gray-400 mt-6">
