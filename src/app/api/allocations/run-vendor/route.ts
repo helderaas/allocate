@@ -91,6 +91,15 @@ export async function POST(req: NextRequest) {
   }));
   console.log("run-vendor division IDs from DB:", divisions.map(d => d.id));
 
+  // If splitMap keys don't match DB division IDs, remap by position
+  const splitMapKeys = Object.keys(splitMap);
+  const splitMapValues = Object.values(splitMap) as number[];
+  const idsMatch = divisions.every(d => splitMap[d.id] !== undefined);
+  if (!idsMatch && splitMapValues.length === divisions.length) {
+    console.log("Remapping splitMap by position");
+    divisions.forEach((div, i) => { splitMap[div.id] = splitMapValues[i]; });
+  }
+
   try {
     // Step 1: Get transaction IDs from TransactionList
     const txnListData = await qboRequest<{ Rows: { Row: TxnRow[] } }>(
