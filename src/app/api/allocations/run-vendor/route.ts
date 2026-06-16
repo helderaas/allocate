@@ -8,21 +8,23 @@ interface TxnRow {
   Rows?: { Row?: TxnRow[] };
 }
 
-function parseTransactionList(rows: TxnRow[]): Record<string, { accountName: string; total: number }> {
+function parseTransactionList(rows: TxnRow[], vendorName: string): Record<string, { accountName: string; total: number }> {
   const map: Record<string, { accountName: string; total: number }> = {};
   for (const row of rows) {
     if (row.type === "Data" && row.ColData) {
       const cols = row.ColData;
+      const rowVendor = cols[3]?.value ?? "";
+      if (rowVendor.toLowerCase() !== vendorName.toLowerCase()) continue;
       const accountName = cols[5]?.value ?? "";
       const accountId = cols[5]?.id ?? accountName;
-      const amount = Math.abs(parseFloat(cols[7]?.value ?? cols[6]?.value ?? "0") || 0);
+      const amount = Math.abs(parseFloat(cols[7]?.value ?? "0") || 0);
       if (accountName && amount > 0) {
         if (!map[accountId]) map[accountId] = { accountName, total: 0 };
         map[accountId].total += amount;
       }
     }
     if (row.Rows?.Row?.length) {
-      const nested = parseTransactionList(row.Rows.Row);
+      const nested = parseTransactionList(row.Rows.Row, vendorName);
       for (const [id, d] of Object.entries(nested)) {
         if (!map[id]) map[id] = { accountName: d.accountName, total: 0 };
         map[id].total += d.total;
@@ -66,11 +68,12 @@ export async function POST(req: NextRequest) {
   // Fetch vendor transactions
   let txnData: { Rows: { Row: TxnRow[] } };
   try {
+    // QBO TransactionList does not support vendor filtering via params — fetch all and filter client-side
     txnData = await qboRequest<{ Rows: { Row: TxnRow[] } }>(
       tenant.id, tenant.qbo_realm_id,
       tenant.qbo_access_token, tenant.qbo_refresh_token,
       "/reports/TransactionList",
-      { start_date: startDate, end_date: endDate, vendor: vendorId, accounting_method: "Accrual" }
+      { start_date: startDate, end_date: endDate, accounting_method: "Accrual" }
     );
   } catch (err) {
     if (err instanceof QBOAuthExpiredError) {
@@ -79,7 +82,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Failed to fetch vendor transactions" }, { status: 500 });
   }
 
-  const accountTotals = parseTransactionList(txnData?.Rows?.Row ?? []);
+  const accountTotals = parseTransactionList(txnData?.Rows?.Row ?? [], vendorName);
   const accounts = Object.entries(accountTotals)
     .map(([id, { accountName, total }]) => ({ id, accountName, total: round2(total) }))
     .filter(a => a.total > 0);
