@@ -258,6 +258,14 @@ export async function GET(req: NextRequest) {
       return buildResponse(req, userId, firmId, firmTenant?.id ?? tenant.id, "/dashboard", intuitSub);
     }
 
+    // Check if this tenant was already classified — if so, returning user, go to dashboard
+    if (tenant.is_firm_company !== null && tenant.is_firm_company !== undefined) {
+      // Already classified — find firm company to set as active tenant
+      const { data: firmTenant } = await db.from("tenants").select("id")
+        .eq("firm_id", firmId).eq("is_firm_company", true).eq("qbo_connected", true).single();
+      return buildResponse(req, userId, firmId, firmTenant?.id ?? tenant.id, "/dashboard", intuitSub);
+    }
+
     // New connection — classify firm vs client
     return buildResponse(req, userId, firmId, tenant.id, `/connect-type?tenantId=${tenant.id}`, intuitSub);
 
