@@ -179,7 +179,7 @@ export default function Nav() {
                         <div className="flex items-center gap-1 shrink-0 ml-1">
                           {c.qbo_connected === false ? (
                             <>
-                              <button onClick={() => handleReconnect(c)} title="Reconnect QBO"
+                              <button onClick={() => handleReconnect(c)} title="Reconnect QuickBooks Online"
                                 className="p-1 text-brand-400 hover:text-brand-600 hover:bg-brand-50 rounded">
                                 <RefreshCw size={13} />
                               </button>
@@ -190,7 +190,7 @@ export default function Nav() {
                             </>
                           ) : (
                             <>
-                              <button onClick={() => setConfirmAction({ type: "disconnect", company: c })} title="Disconnect QBO"
+                              <button onClick={() => setConfirmAction({ type: "disconnect", company: c })} title="Disconnect QuickBooks Online"
                                 className="p-1 text-amber-400 hover:text-amber-600 hover:bg-amber-50 rounded">
                                 <WifiOff size={13} />
                               </button>
