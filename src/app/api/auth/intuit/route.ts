@@ -4,6 +4,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const returnTo = searchParams.get("returnTo") ?? "/dashboard";
   const returning = searchParams.get("returning") === "true";
+  const realmId = searchParams.get("realmId");
 
   const safeReturnTo = returnTo.startsWith("/") && !returnTo.startsWith("//") ? returnTo : "/dashboard";
 
@@ -12,6 +13,11 @@ export async function GET(req: NextRequest) {
   url.searchParams.set("redirect_uri", process.env.NEXT_PUBLIC_QBO_REDIRECT_URI ?? "");
   url.searchParams.set("response_type", "code");
   url.searchParams.set("scope", "com.intuit.quickbooks.accounting openid profile email");
+
+  // Pass realmId so Intuit skips the company picker for returning users
+  if (realmId) {
+    url.searchParams.set("realmId", realmId);
+  }
 
   // Encode both returnTo and returning flag in state
   const stateData = JSON.stringify({ returnTo: safeReturnTo, returning });
