@@ -200,7 +200,7 @@ function ReviewContent() {
     const res = await fetch("/api/allocations/templates", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: templateName, rules }),
+      body: JSON.stringify({ name: templateName, rules, allocation_type: allocationType }),
     });
     const data = await res.json();
     if (!res.ok) {
