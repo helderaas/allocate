@@ -47,6 +47,7 @@ export async function refreshQBOToken(tenantId: string, refreshToken: string): P
     // Refresh token itself is expired — user must reconnect QBO
     const status = axios.isAxiosError(err) ? err.response?.status : null;
     const qboError = axios.isAxiosError(err) ? err.response?.data?.error : null;
+    console.error("Token refresh failed:", status, JSON.stringify(axios.isAxiosError(err) ? err.response?.data : String(err)));
     if (status === 400 || status === 401 || qboError === "invalid_grant") {
       throw new QBOAuthExpiredError("QBO session expired. Please reconnect QuickBooks.");
     }
