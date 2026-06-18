@@ -20,7 +20,6 @@ const env = (process.env.QBO_ENVIRONMENT ?? "sandbox") as "sandbox" | "productio
 
 export async function refreshQBOToken(tenantId: string, refreshToken: string): Promise<QBOTokens> {
   const plainRefreshToken = safeDecrypt(refreshToken);
-  console.log("Refresh token raw length:", refreshToken?.length, "decrypted length:", plainRefreshToken?.length, "looks encrypted:", refreshToken?.includes(":"));
   const params = new URLSearchParams({
     grant_type: "refresh_token",
     refresh_token: plainRefreshToken,
@@ -48,7 +47,6 @@ export async function refreshQBOToken(tenantId: string, refreshToken: string): P
     // Refresh token itself is expired — user must reconnect QBO
     const status = axios.isAxiosError(err) ? err.response?.status : null;
     const qboError = axios.isAxiosError(err) ? err.response?.data?.error : null;
-    console.error("Token refresh failed:", status, JSON.stringify(axios.isAxiosError(err) ? err.response?.data : String(err)));
     if (status === 400 || status === 401 || qboError === "invalid_grant") {
       throw new QBOAuthExpiredError("QBO session expired. Please reconnect QuickBooks.");
     }
@@ -74,12 +72,28 @@ export async function qboRequest<T>(
     if (axios.isAxiosError(err)) {
       // 401 — refresh token and retry once
       if (err.response?.status === 401) {
-        const newTokens = await refreshQBOToken(tenantId, refreshToken);
-        const { data } = await axios.get<T>(`${base}${path}`, {
-          headers: { Authorization: `Bearer ${newTokens.access_token}`, Accept: "application/json" },
-          params,
-        });
-        return data;
+        // Re-read tenant from DB in case another concurrent request already refreshed the token
+        const db = getServiceSupabase();
+        const { data: freshTenant } = await db.from("tenants").select("qbo_access_token, qbo_refresh_token").eq("id", tenantId).single();
+        const freshAccessToken = freshTenant?.qbo_access_token ?? accessToken;
+        const freshRefreshToken = freshTenant?.qbo_refresh_token ?? refreshToken;
+
+        // Try with fresh access token first (may have been updated by concurrent request)
+        try {
+          const { data } = await axios.get<T>(`${base}${path}`, {
+            headers: { Authorization: `Bearer ${freshAccessToken}`, Accept: "application/json" },
+            params,
+          });
+          return data;
+        } catch {
+          // Still 401 — do our own refresh
+          const newTokens = await refreshQBOToken(tenantId, freshRefreshToken);
+          const { data } = await axios.get<T>(`${base}${path}`, {
+            headers: { Authorization: `Bearer ${newTokens.access_token}`, Accept: "application/json" },
+            params,
+          });
+          return data;
+        }
       }
       // 429 — rate limited, wait and retry with exponential backoff
       if (err.response?.status === 429 && retries > 0) {
