@@ -72,11 +72,19 @@ export async function POST(req: NextRequest) {
   const tenantId = req.cookies.get("tenant_id")?.value;
   if (!tenantId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { vendorId, vendorName, period, startDate, endDate, jeDate, description, journalNumber, splitMap } = await req.json();
+  const body = await req.json();
+  const { period, startDate, endDate, jeDate, description, journalNumber, splitMap } = body;
 
-  if (!vendorId || !vendorName || !startDate || !endDate || !splitMap) {
+  // Support both multi-vendor (vendors array) and legacy single vendor
+  const vendorList: { id: string; name: string }[] = body.vendors
+    ?? (body.vendorId ? [{ id: body.vendorId, name: body.vendorName }] : []);
+
+  if (vendorList.length === 0 || !startDate || !endDate || !splitMap) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
+
+  const vendorId = vendorList[0].id;
+  const vendorName = vendorList.map(v => v.name).join(", ");
 
   const db = getServiceSupabase();
   const { data: tenant } = await db.from("tenants").select("*").eq("id", tenantId).single();
@@ -98,7 +106,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // Step 1: Get transaction IDs from TransactionList
+    // Step 1: Get transaction IDs from TransactionList for all vendors
     const txnListData = await qboRequest<{ Rows: { Row: TxnRow[] } }>(
       tenant.id, tenant.qbo_realm_id,
       tenant.qbo_access_token, tenant.qbo_refresh_token,
@@ -106,10 +114,21 @@ export async function POST(req: NextRequest) {
       { start_date: startDate, end_date: endDate, accounting_method: "Accrual" }
     );
 
-    const txnRefs = extractTxnRefs(txnListData?.Rows?.Row ?? [], vendorName);
-    if (txnRefs.length === 0) {
-      return NextResponse.json({ error: `No transactions found for ${vendorName} in this period.` }, { status: 400 });
+    const allRows = txnListData?.Rows?.Row ?? [];
+    // Collect transaction refs for all vendors
+    const allTxnRefs: { id: string; type: string }[] = [];
+    const seenIds = new Set<string>();
+    for (const v of vendorList) {
+      const refs = extractTxnRefs(allRows, v.name);
+      for (const ref of refs) {
+        if (!seenIds.has(ref.id)) { seenIds.add(ref.id); allTxnRefs.push(ref); }
+      }
     }
+
+    if (allTxnRefs.length === 0) {
+      return NextResponse.json({ error: `No transactions found for the selected vendors in this period.` }, { status: 400 });
+    }
+    const txnRefs = allTxnRefs;
 
     // Step 2: Fetch each transaction and extract line items
     const accountMap: Record<string, { accountName: string; total: number }> = {};
