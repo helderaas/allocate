@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
@@ -36,6 +37,8 @@ function vendorLabel(vendors: Vendor[]): string {
 
 function NewVendorAllocationContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const templateId = searchParams.get("templateId");
 
   const [step, setStep] = useState<Step>("divisions");
   const [trackingType, setTrackingType] = useState<TrackingType>("location");
@@ -91,6 +94,25 @@ function NewVendorAllocationContent() {
     }
     load();
   }, []);
+
+  // Load template if templateId provided
+  useEffect(() => {
+    if (!templateId || vendors.length === 0) return;
+    fetch("/api/allocations/templates")
+      .then(r => r.json())
+      .then(({ templates }) => {
+        const tpl = templates?.find((t: { id: string; rules: { vendor_names?: string[]; splitMap?: Record<string, number> }[] }) => t.id === templateId);
+        if (!tpl?.rules?.[0]) return;
+        const { vendor_names, splitMap: tplSplitMap } = tpl.rules[0];
+        if (vendor_names?.length) {
+          const matched = vendors.filter(v => vendor_names.includes(v.DisplayName));
+          if (matched.length) setSelectedVendors(matched);
+        }
+        if (tplSplitMap && Object.keys(tplSplitMap).length) {
+          setSplitMap(tplSplitMap);
+        }
+      });
+  }, [templateId, vendors]);
 
   useEffect(() => {
     const today = new Date();
