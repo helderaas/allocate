@@ -195,8 +195,25 @@ function ReviewContent() {
     if (!templateName.trim()) { setSaveTemplateError("Please enter a name."); return; }
     setSavingTemplate(true);
     setSaveTemplateError("");
-    const configRes = await fetch("/api/onboarding/config", { cache: "no-store" });
-    const { rules } = await configRes.json();
+
+    let rules;
+    if (allocationType === "vendor" && draft) {
+      // For vendor templates: save vendor list + split percentages from the draft lines
+      const firstLine = (draft.lines as unknown as { vendor_name?: string; division_amounts?: Record<string, number>; total_amount?: number }[])?.[0];
+      const vendorNames = draft.vendor_name ? draft.vendor_name.split(", ") : [];
+      const splitMap: Record<string, number> = {};
+      if (firstLine?.division_amounts && firstLine.total_amount) {
+        for (const [divId, amt] of Object.entries(firstLine.division_amounts)) {
+          splitMap[divId] = Math.round((amt / firstLine.total_amount) * 100);
+        }
+      }
+      rules = [{ vendor_names: vendorNames, splitMap }];
+    } else {
+      const configRes = await fetch("/api/onboarding/config", { cache: "no-store" });
+      const config = await configRes.json();
+      rules = config.rules;
+    }
+
     const res = await fetch("/api/allocations/templates", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
