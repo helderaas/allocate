@@ -77,7 +77,6 @@ export async function POST(req: NextRequest) {
   if (!vendorId || !vendorName || !startDate || !endDate || !splitMap) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
-  console.log("run-vendor splitMap received:", JSON.stringify(splitMap));
 
   const db = getServiceSupabase();
   const { data: tenant } = await db.from("tenants").select("*").eq("id", tenantId).single();
@@ -89,14 +88,12 @@ export async function POST(req: NextRequest) {
     qbo_location_id: d.qbo_location_id,
     qbo_class_id: d.qbo_class_id,
   }));
-  console.log("run-vendor division IDs from DB:", divisions.map(d => d.id));
 
   // If splitMap keys don't match DB division IDs, remap by position
   const splitMapKeys = Object.keys(splitMap);
   const splitMapValues = Object.values(splitMap) as number[];
   const idsMatch = divisions.every(d => splitMap[d.id] !== undefined);
   if (!idsMatch && splitMapValues.length === divisions.length) {
-    console.log("Remapping splitMap by position");
     divisions.forEach((div, i) => { splitMap[div.id] = splitMapValues[i]; });
   }
 
