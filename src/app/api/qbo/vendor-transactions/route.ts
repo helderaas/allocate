@@ -99,7 +99,6 @@ export async function GET(req: NextRequest) {
     );
 
     const txnRefs = extractTxnRefs(txnListData?.Rows?.Row ?? [], vendorName);
-    console.log("Vendor txn refs:", JSON.stringify(txnRefs));
 
     if (txnRefs.length === 0) {
       return NextResponse.json({ accounts: [] });
@@ -110,7 +109,7 @@ export async function GET(req: NextRequest) {
 
     await Promise.all(txnRefs.map(async ({ id, type }) => {
       const entity = TXN_TYPE_MAP[type];
-      if (!entity) { console.log("Unknown txn type:", type); return; }
+      if (!entity) { return; }
       try {
         const txn = await qboRequest<Record<string, { Line?: QBOLine[] }>>(
           tenant.id, tenant.qbo_realm_id,
@@ -141,7 +140,6 @@ export async function GET(req: NextRequest) {
       .filter(a => a.total > 0)
       .sort((a, b) => b.total - a.total);
 
-    console.log("Final accounts:", JSON.stringify(accounts));
     return NextResponse.json({ accounts });
   } catch (err) {
     if (err instanceof QBOAuthExpiredError) {
