@@ -85,5 +85,8 @@ export interface AllocationDraft {
   posted_at?: string;
   voided_at?: string;
   locked_at?: string;
+  allocation_type?: string;
+  vendor_id?: string;
+  vendor_name?: string;
 }
 
