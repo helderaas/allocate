@@ -24,6 +24,7 @@ interface AllocationDraftRow {
 interface Template {
   id: string;
   name: string;
+  allocation_type?: string;
   rules: {
     qbo_account_id: string;
     qbo_account_name: string;
@@ -134,7 +135,12 @@ export default function DashboardPage() {
     if (selectedTemplateId === "fresh") {
       router.push("/new-allocation");
     } else {
-      router.push(`/new-allocation?templateId=${selectedTemplateId}&step=dates`);
+      const template = templates.find(t => t.id === selectedTemplateId);
+      if (template?.allocation_type === "vendor") {
+        router.push("/new-vendor-allocation");
+      } else {
+        router.push(`/new-allocation?templateId=${selectedTemplateId}&step=dates`);
+      }
     }
     setShowLaunchModal(false);
   };
