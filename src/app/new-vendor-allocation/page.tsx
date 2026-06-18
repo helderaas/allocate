@@ -128,7 +128,10 @@ function NewVendorAllocationContent() {
 
   const items = trackingType === "location" ? locations : classes;
   const canProceedDivisions = selectedDivisions.length >= 1 && selectedDivisions.every(d => d.qbo_location_id || d.qbo_class_id);
-  const splitTotal = Object.values(splitMap).reduce((sum, v) => sum + v, 0);
+  // Include the last division's auto-calculated value in the total
+  const splitTotalExcludingLast = selectedDivisions.slice(0, -1).reduce((sum, d) => sum + (splitMap[d.id] ?? 0), 0);
+  const lastDivAutoVal = selectedDivisions.length > 0 ? Math.max(0, 100 - splitTotalExcludingLast) : 0;
+  const splitTotal = splitTotalExcludingLast + lastDivAutoVal;
 
   const filteredVendors = vendors.filter(v =>
     v.DisplayName.toLowerCase().includes(vendorSearch.toLowerCase())
