@@ -41,6 +41,7 @@ function ReviewContent() {
   const router = useRouter();
   const period = params.get("period");
   const t = params.get("t");
+  const allocationType = params.get("type") ?? "account";
 
   const [draft, setDraft] = useState<AllocationDraft | null>(null);
   const [lines, setLines] = useState<EditableLine[]>([]);
@@ -147,7 +148,7 @@ function ReviewContent() {
   const isBalanced = true; // credit line = sum of debits, always balanced
 
   const handleReject = () => {
-    router.push("/new-allocation");
+    router.push(allocationType === "vendor" ? "/new-vendor-allocation" : "/new-allocation");
   };
 
   const approve = async () => {
@@ -277,7 +278,7 @@ function ReviewContent() {
               onClick={handleReject}
               className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50"
             >
-              <XCircle size={16} /> Edit accounts
+              <XCircle size={16} /> {allocationType === "vendor" ? "Edit vendor" : "Edit accounts"}
             </button>
             <button
               onClick={approve}
