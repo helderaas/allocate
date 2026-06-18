@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   ChevronRight, ChevronLeft, Loader2, CheckCircle2,
-  ArrowRight, Calendar, Trash2, Plus, Search,
+  ArrowRight, Calendar, Trash2, Plus, Search, X,
 } from "lucide-react";
 
 type Step = "divisions" | "vendor" | "splits" | "dates";
@@ -28,6 +28,12 @@ interface AccountPreview {
   total: number;
 }
 
+function vendorLabel(vendors: Vendor[]): string {
+  if (vendors.length === 0) return "";
+  if (vendors.length <= 2) return vendors.map(v => v.DisplayName).join(", ");
+  return `${vendors[0].DisplayName}, ${vendors[1].DisplayName} + ${vendors.length - 2} more`;
+}
+
 function NewVendorAllocationContent() {
   const router = useRouter();
 
@@ -37,7 +43,7 @@ function NewVendorAllocationContent() {
   const [classes, setClasses] = useState<QBOClass[]>([]);
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [selectedDivisions, setSelectedDivisions] = useState<SelectedDivision[]>([]);
-  const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
+  const [selectedVendors, setSelectedVendors] = useState<Vendor[]>([]);
   const [vendorSearch, setVendorSearch] = useState("");
   const [splitMap, setSplitMap] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
@@ -98,7 +104,6 @@ function NewVendorAllocationContent() {
     }
   }, [datePreset]);
 
-  // Initialize equal split when divisions change
   useEffect(() => {
     if (selectedDivisions.length === 0) return;
     const equal = Math.round(100 / selectedDivisions.length);
@@ -111,15 +116,38 @@ function NewVendorAllocationContent() {
     setSplitMap(map);
   }, [selectedDivisions.length]);
 
-  // Preview accounts when vendor + dates are both set
+  // Preview: fetch accounts for all selected vendors and combine by account
   useEffect(() => {
-    if (!selectedVendor || !startDate || !endDate) { setPreviewAccounts([]); return; }
+    if (selectedVendors.length === 0 || !startDate || !endDate) { setPreviewAccounts([]); return; }
     setPreviewLoading(true);
-    fetch(`/api/qbo/vendor-transactions?vendorId=${selectedVendor.Id}&vendorName=${encodeURIComponent(selectedVendor.DisplayName)}&startDate=${startDate}&endDate=${endDate}`)
-      .then(r => r.json())
-      .then(d => { setPreviewAccounts(d.accounts ?? []); setPreviewLoading(false); })
-      .catch(() => setPreviewLoading(false));
-  }, [selectedVendor, startDate, endDate]);
+    Promise.all(
+      selectedVendors.map(v =>
+        fetch(`/api/qbo/vendor-transactions?vendorId=${v.Id}&vendorName=${encodeURIComponent(v.DisplayName)}&startDate=${startDate}&endDate=${endDate}`)
+          .then(r => r.json())
+          .then(d => (d.accounts ?? []) as AccountPreview[])
+          .catch(() => [] as AccountPreview[])
+      )
+    ).then(results => {
+      // Merge: combine totals for same account across vendors
+      const merged: Record<string, AccountPreview> = {};
+      for (const accounts of results) {
+        for (const a of accounts) {
+          if (!merged[a.id]) merged[a.id] = { ...a };
+          else merged[a.id].total = Math.round((merged[a.id].total + a.total) * 100) / 100;
+        }
+      }
+      setPreviewAccounts(Object.values(merged).sort((a, b) => b.total - a.total));
+      setPreviewLoading(false);
+    });
+  }, [selectedVendors, startDate, endDate]);
+
+  const toggleVendor = (v: Vendor) => {
+    setSelectedVendors(prev =>
+      prev.find(x => x.Id === v.Id)
+        ? prev.filter(x => x.Id !== v.Id)
+        : [...prev, v]
+    );
+  };
 
   const addDivision = () => setSelectedDivisions(prev => [...prev, { id: `new-${Date.now()}`, name: "" }]);
   const removeDivision = (id: string) => setSelectedDivisions(prev => prev.filter(d => d.id !== id));
@@ -128,7 +156,6 @@ function NewVendorAllocationContent() {
 
   const items = trackingType === "location" ? locations : classes;
   const canProceedDivisions = selectedDivisions.length >= 1 && selectedDivisions.every(d => d.qbo_location_id || d.qbo_class_id);
-  // Include the last division's auto-calculated value in the total
   const splitTotalExcludingLast = selectedDivisions.slice(0, -1).reduce((sum, d) => sum + (splitMap[d.id] ?? 0), 0);
   const lastDivAutoVal = selectedDivisions.length > 0 ? Math.max(0, 100 - splitTotalExcludingLast) : 0;
   const splitTotal = splitTotalExcludingLast + lastDivAutoVal;
@@ -141,12 +168,15 @@ function NewVendorAllocationContent() {
     ? new Date(startDate + "T12:00:00").toLocaleString("default", { month: "long", year: "numeric" })
     : "Select a period";
 
+  const defaultDescription = selectedVendors.length > 0
+    ? `Vendor allocation - ${vendorLabel(selectedVendors)} - ${periodLabel}`
+    : "";
+
   const runAllocation = async () => {
-    if (!selectedVendor || !startDate || !endDate) { setRunError("Please select a vendor and period."); return; }
+    if (selectedVendors.length === 0 || !startDate || !endDate) { setRunError("Please select at least one vendor and a period."); return; }
     if (Math.abs(splitTotal - 100) > 0.5) { setRunError("Split percentages must add up to 100%."); return; }
     setRunning(true); setRunError("");
 
-    // Save divisions
     await fetch("/api/divisions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -161,7 +191,6 @@ function NewVendorAllocationContent() {
     });
 
     const period = startDate.slice(0, 7);
-    // Compute the last division's auto value and add it to splitMap before sending
     const completeSplitMap = { ...splitMap };
     if (selectedDivisions.length > 0) {
       const lastDiv = selectedDivisions[selectedDivisions.length - 1];
@@ -173,11 +202,10 @@ function NewVendorAllocationContent() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        vendorId: selectedVendor.Id,
-        vendorName: selectedVendor.DisplayName,
+        vendors: selectedVendors.map(v => ({ id: v.Id, name: v.DisplayName })),
         period, startDate, endDate,
         jeDate: jeDate || endDate,
-        description: description || `Vendor allocation - ${selectedVendor.DisplayName} - ${periodLabel}`,
+        description: description || defaultDescription,
         journalNumber,
         splitMap: completeSplitMap,
       }),
@@ -191,7 +219,7 @@ function NewVendorAllocationContent() {
   const stepOrder: Step[] = ["divisions", "vendor", "splits", "dates"];
   const stepLabels: Record<Step, string> = {
     divisions: trackingType === "location" ? "Locations" : "Classes",
-    vendor: "Vendor",
+    vendor: "Vendors",
     splits: "Splits",
     dates: "Dates",
   };
@@ -212,7 +240,6 @@ function NewVendorAllocationContent() {
       </nav>
 
       <div className="max-w-3xl mx-auto py-10 px-4">
-        {/* Step indicator */}
         <div className="flex items-center gap-2 mb-8 flex-wrap">
           {stepOrder.map((s, i) => (
             <div key={s} className="flex items-center gap-2">
@@ -231,7 +258,7 @@ function NewVendorAllocationContent() {
         <h1 className="text-2xl font-semibold text-gray-900 mb-1">New Vendor Allocation</h1>
         <p className="text-gray-500 mb-8 text-sm">
           {step === "divisions" && "Choose which locations or departments to allocate vendor expenses across."}
-          {step === "vendor" && "Select the vendor whose transactions you want to allocate."}
+          {step === "vendor" && "Select one or more vendors whose transactions you want to allocate."}
           {step === "splits" && "Set the percentage split across your divisions."}
           {step === "dates" && "Choose the period to allocate."}
         </p>
@@ -297,15 +324,29 @@ function NewVendorAllocationContent() {
 
             <button disabled={!canProceedDivisions} onClick={() => setStep("vendor")}
               className="w-full py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-40 text-white rounded-xl font-medium text-sm flex items-center justify-center gap-2">
-              Next: pick vendor <ChevronRight size={16} />
+              Next: pick vendors <ChevronRight size={16} />
             </button>
           </div>
         )}
 
-        {/* Step 2 — Vendor picker */}
+        {/* Step 2 — Multi-vendor picker */}
         {step === "vendor" && (
           <div className="bg-white rounded-2xl border border-gray-200 p-6">
-            <h2 className="font-medium text-gray-900 mb-4">Select a vendor</h2>
+            <h2 className="font-medium text-gray-900 mb-1">Select vendors</h2>
+            <p className="text-sm text-gray-500 mb-4">Select one or more vendors. Transactions will be grouped by expense account.</p>
+
+            {/* Selected vendor chips */}
+            {selectedVendors.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {selectedVendors.map(v => (
+                  <span key={v.Id} className="flex items-center gap-1.5 text-xs font-medium bg-brand-50 text-brand-700 px-2.5 py-1 rounded-full border border-brand-200">
+                    {v.DisplayName}
+                    <button onClick={() => toggleVendor(v)} className="hover:text-red-500"><X size={11} /></button>
+                  </span>
+                ))}
+              </div>
+            )}
+
             <div className="relative mb-3">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
@@ -314,18 +355,23 @@ function NewVendorAllocationContent() {
                 className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-xl"
               />
             </div>
-            <div className="space-y-0.5 max-h-96 overflow-y-auto mb-6 border border-gray-100 rounded-xl divide-y divide-gray-50">
-              {filteredVendors.map(v => (
-                <button key={v.Id} onClick={() => setSelectedVendor(v)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${
-                    selectedVendor?.Id === v.Id ? "bg-brand-50" : "hover:bg-gray-50"
-                  }`}>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{v.DisplayName}</p>
-                  </div>
-                  {selectedVendor?.Id === v.Id && <CheckCircle2 size={14} className="text-brand-400 shrink-0" />}
-                </button>
-              ))}
+            <div className="space-y-0.5 max-h-80 overflow-y-auto mb-6 border border-gray-100 rounded-xl divide-y divide-gray-50">
+              {filteredVendors.map(v => {
+                const isSelected = selectedVendors.some(x => x.Id === v.Id);
+                return (
+                  <button key={v.Id} onClick={() => toggleVendor(v)}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${
+                      isSelected ? "bg-brand-50" : "hover:bg-gray-50"
+                    }`}>
+                    <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+                      isSelected ? "bg-brand-600 border-brand-600" : "border-gray-300"
+                    }`}>
+                      {isSelected && <CheckCircle2 size={10} className="text-white" />}
+                    </div>
+                    <p className="text-sm font-medium text-gray-900 truncate flex-1">{v.DisplayName}</p>
+                  </button>
+                );
+              })}
               {filteredVendors.length === 0 && (
                 <p className="text-sm text-gray-400 text-center py-8">No vendors found</p>
               )}
@@ -335,9 +381,12 @@ function NewVendorAllocationContent() {
                 className="flex items-center gap-1.5 px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50">
                 <ChevronLeft size={16} /> Back
               </button>
-              <button disabled={!selectedVendor} onClick={() => setStep("splits")}
+              <button disabled={selectedVendors.length === 0} onClick={() => setStep("splits")}
                 className="flex-1 py-2.5 bg-brand-600 hover:bg-brand-700 disabled:opacity-40 text-white rounded-xl font-medium text-sm flex items-center justify-center gap-2">
-                {selectedVendor ? `"${selectedVendor.DisplayName}" — set splits` : "Select a vendor"} <ChevronRight size={16} />
+                {selectedVendors.length === 0
+                  ? "Select at least one vendor"
+                  : `${selectedVendors.length} vendor${selectedVendors.length > 1 ? "s" : ""} selected — set splits`}
+                <ChevronRight size={16} />
               </button>
             </div>
           </div>
@@ -348,7 +397,8 @@ function NewVendorAllocationContent() {
           <div className="bg-white rounded-2xl border border-gray-200 p-6">
             <h2 className="font-medium text-gray-900 mb-1">Set split percentages</h2>
             <p className="text-sm text-gray-500 mb-6">
-              These percentages apply to all expense accounts for <span className="font-medium text-gray-800">{selectedVendor?.DisplayName}</span>.
+              These percentages apply to all expense accounts for{" "}
+              <span className="font-medium text-gray-800">{vendorLabel(selectedVendors)}</span>.
             </p>
 
             <div className="space-y-3 mb-6">
@@ -432,17 +482,17 @@ function NewVendorAllocationContent() {
             </div>
 
             {/* Account preview */}
-            {selectedVendor && startDate && endDate && (
+            {selectedVendors.length > 0 && startDate && endDate && (
               <div className="mb-4 p-4 rounded-xl bg-gray-50 border border-gray-100">
                 <p className="text-xs font-medium text-gray-600 mb-2">
-                  Accounts to be allocated for <span className="text-gray-900">{selectedVendor.DisplayName}</span>:
+                  Accounts to be allocated for <span className="text-gray-900">{vendorLabel(selectedVendors)}</span>:
                 </p>
                 {previewLoading ? (
                   <div className="flex items-center gap-2 text-gray-400 text-xs">
                     <Loader2 size={12} className="animate-spin" /> Loading transactions...
                   </div>
                 ) : previewAccounts.length === 0 ? (
-                  <p className="text-xs text-amber-600">No transactions found for this vendor in this period.</p>
+                  <p className="text-xs text-amber-600">No transactions found for the selected vendors in this period.</p>
                 ) : (
                   <div className="space-y-1">
                     {previewAccounts.map(a => (
@@ -481,7 +531,7 @@ function NewVendorAllocationContent() {
                 <div className="col-span-2">
                   <label className="block text-xs text-gray-500 mb-1">Description / memo</label>
                   <input type="text" value={description} onChange={e => setDescription(e.target.value)}
-                    placeholder={selectedVendor ? `Vendor allocation - ${selectedVendor.DisplayName} - ${periodLabel}` : ""}
+                    placeholder={defaultDescription}
                     className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2" />
                 </div>
               </div>
