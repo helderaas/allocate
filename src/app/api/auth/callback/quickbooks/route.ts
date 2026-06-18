@@ -97,7 +97,6 @@ export async function GET(req: NextRequest) {
   // OAuth error — try to restore session from cookies before falling back to login
   const oauthError = searchParams.get("error");
   if (oauthError) {
-    console.log("OAuth error:", oauthError);
     return NextResponse.redirect(new URL("/api/auth/restore", req.url));
   }
   const code = searchParams.get("code");
