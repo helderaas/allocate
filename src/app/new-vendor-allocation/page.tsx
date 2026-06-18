@@ -108,9 +108,7 @@ function NewVendorAllocationContent() {
           const matched = vendors.filter(v => vendor_names.includes(v.DisplayName));
           if (matched.length) setSelectedVendors(matched);
         }
-        if (tplSplitMap && Object.keys(tplSplitMap).length) {
-          setSplitMap(tplSplitMap);
-        }
+
       });
   }, [templateId, vendors]);
 
