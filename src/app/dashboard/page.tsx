@@ -18,6 +18,7 @@ interface AllocationDraftRow {
   description: string;
   qbo_journal_entry_id?: string;
   voided_at?: string;
+  allocation_type?: string;
 }
 
 interface Template {
@@ -450,7 +451,7 @@ export default function DashboardPage() {
                   </div>
                   <div
                     className="flex-1 min-w-0 cursor-pointer"
-                    onClick={() => router.push("/review?period=" + a.period + "&t=" + Date.now())}
+                    onClick={() => router.push("/review?period=" + a.period + "&t=" + Date.now() + (a.allocation_type === "vendor" ? "&type=vendor" : ""))}
                   >
                     <p className="text-sm font-medium text-gray-900">{periodLabel(a.period)}</p>
                     <p className="text-xs text-gray-400 truncate">{a.description || "Division allocation"}</p>
@@ -474,7 +475,7 @@ export default function DashboardPage() {
                   <ChevronRight
                     size={14}
                     className="text-gray-300 cursor-pointer"
-                    onClick={() => router.push("/review?period=" + a.period + "&t=" + Date.now())}
+                    onClick={() => router.push("/review?period=" + a.period + "&t=" + Date.now() + (a.allocation_type === "vendor" ? "&type=vendor" : ""))}
                   />
                 </div>
               ))}
@@ -509,7 +510,7 @@ export default function DashboardPage() {
                 </div>
                 <div
                   className="flex-1 min-w-0 cursor-pointer"
-                  onClick={() => router.push("/review?period=" + a.period + "&t=" + Date.now())}
+                  onClick={() => router.push("/review?period=" + a.period + "&t=" + Date.now() + (a.allocation_type === "vendor" ? "&type=vendor" : ""))}
                 >
                   <p className={`text-sm font-medium ${a.status === "voided" ? "text-gray-400 line-through" : "text-gray-900"}`}>
                     {periodLabel(a.period)}
