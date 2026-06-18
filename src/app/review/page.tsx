@@ -207,7 +207,7 @@ function ReviewContent() {
           splitMap[divId] = Math.round((amt / firstLine.total_amount) * 100);
         }
       }
-      rules = [{ vendor_names: vendorNames, splitMap }];
+      rules = [{ vendor_names: vendorNames }];
     } else {
       const configRes = await fetch("/api/onboarding/config", { cache: "no-store" });
       const config = await configRes.json();
