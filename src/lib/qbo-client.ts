@@ -20,6 +20,7 @@ const env = (process.env.QBO_ENVIRONMENT ?? "sandbox") as "sandbox" | "productio
 
 export async function refreshQBOToken(tenantId: string, refreshToken: string): Promise<QBOTokens> {
   const plainRefreshToken = safeDecrypt(refreshToken);
+  console.log("Refresh token raw length:", refreshToken?.length, "decrypted length:", plainRefreshToken?.length, "looks encrypted:", refreshToken?.includes(":"));
   const params = new URLSearchParams({
     grant_type: "refresh_token",
     refresh_token: plainRefreshToken,
