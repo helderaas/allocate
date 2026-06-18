@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
   const db = getServiceSupabase();
   const { data: templates, error } = await db
     .from("allocation_templates")
-    .select("id, name, rules, created_at")
+    .select("id, name, rules, created_at, allocation_type")
     .eq("tenant_id", tenantId)
     .order("created_at", { ascending: false });
 
@@ -20,14 +20,14 @@ export async function POST(req: NextRequest) {
   const tenantId = req.cookies.get("tenant_id")?.value;
   if (!tenantId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { name, rules } = await req.json();
+  const { name, rules, allocation_type } = await req.json();
   if (!name?.trim()) return NextResponse.json({ error: "Template name required" }, { status: 400 });
   if (!rules?.length) return NextResponse.json({ error: "No rules to save" }, { status: 400 });
 
   const db = getServiceSupabase();
   const { data: template, error } = await db
     .from("allocation_templates")
-    .insert({ tenant_id: tenantId, name: name.trim(), rules })
+    .insert({ tenant_id: tenantId, name: name.trim(), rules, allocation_type: allocation_type ?? "account" })
     .select()
     .single();
 
