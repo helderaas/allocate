@@ -137,7 +137,7 @@ export default function DashboardPage() {
     } else {
       const template = templates.find(t => t.id === selectedTemplateId);
       if (template?.allocation_type === "vendor") {
-        router.push("/new-vendor-allocation");
+        router.push(`/new-vendor-allocation?templateId=${selectedTemplateId}`);
       } else {
         router.push(`/new-allocation?templateId=${selectedTemplateId}&step=dates`);
       }
