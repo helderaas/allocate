@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServiceSupabase } from "@/lib/supabase";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: NextRequest) {
   const firmId = req.cookies.get("firm_id")?.value;
   if (!firmId) return NextResponse.json({ companies: [] });
