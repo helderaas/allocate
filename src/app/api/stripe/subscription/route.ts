@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServiceSupabase } from "@/lib/supabase";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: NextRequest) {
   const firmId = req.cookies.get("firm_id")?.value;
-  console.log("subscription route firm_id:", firmId);
   if (!firmId) return NextResponse.json({ subscription: null });
 
   const db = getServiceSupabase();
@@ -35,6 +36,5 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  console.log("subscription route firm result:", JSON.stringify(firm));
   return NextResponse.json({ subscription: firm ?? null });
 }
