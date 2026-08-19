@@ -48,7 +48,6 @@ export async function GET(req: NextRequest) {
         });
       }
     } catch (e) {
-      console.error("Stripe subscription verify failed:", e);
     }
   }
 
