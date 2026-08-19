@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServiceSupabase } from "@/lib/supabase";
 import { stripe } from "@/lib/stripe";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(req: NextRequest) {
   const firmId = req.cookies.get("firm_id")?.value;
   const userId = req.cookies.get("user_id")?.value
