@@ -58,21 +58,18 @@ export async function GET(req: NextRequest) {
       .limit(1)
       .single();
 
-    // Fetch company name if missing
+    // Fetch company name if missing — fire and forget, don't block redirect
     if (tenant && !tenant.company_name && tenant.qbo_access_token && tenant.qbo_realm_id) {
-      try {
-        const info = await fetchCompanyInfo(
-          tenant.id,
-          tenant.qbo_realm_id,
-          tenant.qbo_access_token,
-          safeDecrypt(tenant.qbo_refresh_token)
-        );
+      fetchCompanyInfo(
+        tenant.id,
+        tenant.qbo_realm_id,
+        tenant.qbo_access_token,
+        safeDecrypt(tenant.qbo_refresh_token)
+      ).then(info => {
         if (info?.CompanyName) {
-          await db.from("tenants")
-            .update({ company_name: info.CompanyName })
-            .eq("id", tenant.id);
+          db.from("tenants").update({ company_name: info.CompanyName }).eq("id", tenant.id);
         }
-      } catch { /* non-fatal */ }
+      }).catch(() => { /* non-fatal */ });
     }
 
     const response = NextResponse.redirect(new URL("/dashboard", req.url));
