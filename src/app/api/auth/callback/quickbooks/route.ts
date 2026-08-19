@@ -241,7 +241,8 @@ export async function GET(req: NextRequest) {
     if (!tenant) return NextResponse.redirect(new URL("/login?error=tenant_error", req.url));
 
     // Fetch company name now that we have a real tenant ID
-    await fetchAndSaveCompanyName(db, tenant.id, realmId, tokens.access_token, tokens.refresh_token);
+    // Fire and forget — don't block the redirect on company name fetch
+    fetchAndSaveCompanyName(db, tenant.id, realmId, tokens.access_token, tokens.refresh_token).catch(e => console.error("fetchCompanyName bg error:", e));
 
     // ── Route based on flow type ──────────────────────────────────────────────
     if (reconnectTenantId) {
