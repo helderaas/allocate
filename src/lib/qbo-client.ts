@@ -98,7 +98,8 @@ export async function qboRequest<T>(
       // 429 — rate limited, wait and retry with exponential backoff
       if (err.response?.status === 429 && retries > 0) {
         const retryAfter = parseInt(err.response.headers["retry-after"] ?? "2") * 1000;
-        const delay = retryAfter || (2 ** (3 - retries)) * 1000; // 1s, 2s, 4s
+        // Cap retry delay at 5s — QBO sometimes returns 60s which makes the UI unusable
+        const delay = Math.min(retryAfter || (2 ** (3 - retries)) * 1000, 5000);
         console.log(`QBO rate limited, retrying in ${delay}ms (${retries} retries left)`);
         await sleep(delay);
         return qboRequest<T>(tenantId, realmId, accessToken, refreshToken, path, params, retries - 1);
