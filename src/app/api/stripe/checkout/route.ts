@@ -33,11 +33,16 @@ export async function POST(req: NextRequest) {
   if (intuitUser?.email) {
     userEmail = intuitUser.email;
   } else {
-    // Legacy Supabase session fallback
-    try {
-      const { data: { user } } = await db.auth.admin.getUserById(userId);
-      userEmail = user?.email;
-    } catch { /* non-fatal */ }
+    // Try looking up by firm_id as fallback
+    const { data: firmIntuitUser } = await db.from("intuit_users").select("email").eq("firm_id", firmId).single();
+    if (firmIntuitUser?.email) {
+      userEmail = firmIntuitUser.email;
+    } else {
+      try {
+        const { data: { user } } = await db.auth.admin.getUserById(userId);
+        userEmail = user?.email;
+      } catch { /* non-fatal */ }
+    }
   }
 
   if (!userEmail) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -62,7 +67,7 @@ export async function POST(req: NextRequest) {
     }
     return NextResponse.json({ url: null }); // null = go to dashboard
   }
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://allocateapp.net";
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.allocateapp.net";
 
   // Create or retrieve Stripe customer
   let customerId = firm.stripe_customer_id;
