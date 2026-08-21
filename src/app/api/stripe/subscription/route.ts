@@ -6,18 +6,15 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   const firmId = req.cookies.get("firm_id")?.value;
-  console.log("sub route firm_id:", firmId, "all cookies:", JSON.stringify([...req.cookies.getAll()].map(c => c.name)));
   if (!firmId) return NextResponse.json({ subscription: null });
 
   const db = getServiceSupabase();
 
-  const { data: firmRows, error: firmError } = await db
+  const { data: firmRows } = await db
     .from("firms")
-    .select("*")
-    .eq("id", firmId);
-  console.log("firm query error:", JSON.stringify(firmError));
-  console.log("firm rows count:", firmRows?.length);
-  console.log("firm row data:", JSON.stringify(firmRows?.[0]));
+    .select("subscription_status, subscription_quantity, subscription_current_period_end, stripe_customer_id, stripe_subscription_id")
+    .eq("id", firmId)
+    .limit(1);
   const firm = firmRows?.[0] ?? null;
 
   // If DB shows inactive but we have a subscription ID, verify with Stripe directly
@@ -75,6 +72,5 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  console.log("sub route firm data:", JSON.stringify(firm));
   return NextResponse.json({ subscription: firm ?? null });
 }
