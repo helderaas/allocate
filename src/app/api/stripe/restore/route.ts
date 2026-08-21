@@ -28,6 +28,13 @@ export async function GET(req: NextRequest) {
       .eq("id", firmId)
       .single();
 
+    // Also get intuit_sub for session cookie
+    const { data: intuitUser } = await db
+      .from("intuit_users")
+      .select("intuit_sub")
+      .eq("firm_id", firmId)
+      .single();
+
     if (!firm) {
       return NextResponse.redirect(new URL("/login", req.url));
     }
@@ -82,6 +89,10 @@ export async function GET(req: NextRequest) {
 
     if (tenant) {
       response.cookies.set("tenant_id", tenant.id, { ...cookieOpts, maxAge: 60 * 60 * 24 * 30 });
+    }
+
+    if (intuitUser?.intuit_sub) {
+      response.cookies.set("intuit_sub", intuitUser.intuit_sub, { ...cookieOpts, maxAge: 60 * 60 * 24 * 30 });
     }
 
     return response;
