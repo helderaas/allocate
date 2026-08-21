@@ -60,7 +60,7 @@ export default function Nav() {
     if (!currentCompany || currentCompany.company_name) return;
 
     let attempts = 0;
-    const maxAttempts = 6;
+    const maxAttempts = 4;
     const interval = setInterval(async () => {
       attempts++;
       try {
@@ -75,7 +75,7 @@ export default function Nav() {
         }
       } catch { /* non-fatal */ }
       if (attempts >= maxAttempts) clearInterval(interval);
-    }, 5000);
+    }, 30000); // every 30 seconds to avoid rate limiting
 
     return () => clearInterval(interval);
   }, [companies, currentTenantId]);
