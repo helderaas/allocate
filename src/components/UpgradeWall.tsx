@@ -17,9 +17,12 @@ export default function UpgradeWall() {
       const data = await res.json();
       if (data.url) {
         window.location.href = data.url;
-      } else {
-        setError(data.error ?? "Something went wrong");
+      } else if (data.error) {
+        setError(data.error);
         setLoading(false);
+      } else {
+        // No URL and no error = already subscribed, go to dashboard
+        window.location.href = "/dashboard";
       }
     } catch {
       setError("Something went wrong");
