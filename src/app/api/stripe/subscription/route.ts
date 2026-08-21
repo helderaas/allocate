@@ -11,11 +11,13 @@ export async function GET(req: NextRequest) {
 
   const db = getServiceSupabase();
 
-  const { data: firm } = await db
+  const { data: firm, error: firmError } = await db
     .from("firms")
     .select("subscription_status, subscription_quantity, subscription_current_period_end, stripe_customer_id, stripe_subscription_id")
     .eq("id", firmId)
     .single();
+  console.log("firm query error:", JSON.stringify(firmError));
+  console.log("supabase url:", process.env.NEXT_PUBLIC_SUPABASE_URL?.slice(0, 30));
 
   // If DB shows inactive but we have a subscription ID, verify with Stripe directly
   if (firm?.stripe_subscription_id && 
