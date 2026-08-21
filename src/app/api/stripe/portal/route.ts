@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
 
   const db = getServiceSupabase();
   const { data: firm } = await db
-    .from("firms").select("stripe_customer_id").eq("id", firmId).single();
+    .from("firms").select("stripe_customer_id").eq("id", firmId).limit(1).then(r => ({ data: r.data?.[0] ?? null, error: r.error }));
 
   if (!firm?.stripe_customer_id) {
     return NextResponse.json({ error: "No Stripe customer found" }, { status: 404 });
