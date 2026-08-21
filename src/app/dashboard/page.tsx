@@ -5,7 +5,7 @@ import Nav from "@/components/Nav";
 import UpgradeWall from "@/components/UpgradeWall";
 import {
   Calendar, CheckCircle, Clock,
-  Loader2, Plus, ChevronRight, BookOpen, Trash2, Play, X, XCircle, History, UserX, Store,
+  Loader2, Plus, ChevronRight, BookOpen, Trash2, Play, X, XCircle, History, UserX, Store, RefreshCw,
 } from "lucide-react";
 
 interface AllocationDraftRow {
@@ -74,6 +74,8 @@ export default function DashboardPage() {
   const [voidingId, setVoidingId] = useState<string | null>(null);
   const [showVoidConfirm, setShowVoidConfirm] = useState<string | null>(null);
   const [showDeleteAccountConfirm, setShowDeleteAccountConfirm] = useState(false);
+  const [refreshingQBO, setRefreshingQBO] = useState(false);
+  const [refreshSuccess, setRefreshSuccess] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [companiesLoaded, setCompaniesLoaded] = useState(false);
   const [companiesList, setCompaniesList] = useState<{ id: string }[]>([]);
@@ -183,6 +185,20 @@ export default function DashboardPage() {
     }
     setVoidingId(null);
     setShowVoidConfirm(null);
+  };
+
+  const handleRefreshQBO = async () => {
+    setRefreshingQBO(true);
+    setRefreshSuccess(false);
+    try {
+      await fetch("/api/qbo/clear-cache", { method: "POST", credentials: "include" });
+      setRefreshSuccess(true);
+      setTimeout(() => setRefreshSuccess(false), 3000);
+    } catch (e) {
+      console.error("Cache clear error:", e);
+    } finally {
+      setRefreshingQBO(false);
+    }
   };
 
   const handleDeleteAccount = async () => {
@@ -304,6 +320,15 @@ export default function DashboardPage() {
             className="flex items-center gap-2 px-5 py-2.5 bg-white hover:bg-gray-50 text-brand-700 border border-brand-200 rounded-xl font-medium text-sm"
           >
             <Store size={16} /> Vendor Allocation
+          </button>
+          <button
+            onClick={handleRefreshQBO}
+            disabled={refreshingQBO}
+            title="Refresh QuickBooks Online data cache"
+            className="flex items-center gap-2 px-3 py-2.5 bg-white hover:bg-gray-50 text-gray-500 hover:text-gray-700 border border-gray-200 rounded-xl text-sm disabled:opacity-50"
+          >
+            <RefreshCw size={15} className={refreshingQBO ? "animate-spin" : ""} />
+            {refreshSuccess ? "Refreshed!" : "Refresh QBO"}
           </button>
         </div>
 
