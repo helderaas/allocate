@@ -46,7 +46,7 @@ export default function DashboardPage() {
   const [companyName, setCompanyName] = useState<string>("");
 
   useEffect(() => {
-    fetch("/api/stripe/subscription", { credentials: "include" })
+    fetch("/api/stripe/subscription?t=" + Date.now(), { credentials: "include", cache: "no-store" })
       .then(r => r.json())
       .then(d => {
         setSubscriptionStatus(d.subscription?.subscription_status ?? "inactive");
