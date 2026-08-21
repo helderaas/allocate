@@ -54,6 +54,32 @@ export default function Nav() {
 
   useEffect(() => { loadCompanies(); }, []);
 
+  // If current company has no name, retry fetching it from QBO every 5 seconds
+  useEffect(() => {
+    const currentCompany = companies.find(c => c.id === currentTenantId);
+    if (!currentCompany || currentCompany.company_name) return;
+
+    let attempts = 0;
+    const maxAttempts = 6;
+    const interval = setInterval(async () => {
+      attempts++;
+      try {
+        const res = await fetch("/api/companies/refresh-name", {
+          method: "POST",
+          credentials: "include",
+        });
+        const data = await res.json();
+        if (data.company_name) {
+          loadCompanies();
+          clearInterval(interval);
+        }
+      } catch { /* non-fatal */ }
+      if (attempts >= maxAttempts) clearInterval(interval);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [companies, currentTenantId]);
+
   // Close switcher when clicking outside
   useEffect(() => {
     if (!showSwitcher) return;
