@@ -6,6 +6,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   const firmId = req.cookies.get("firm_id")?.value;
+  console.log("sub route firm_id:", firmId, "all cookies:", JSON.stringify([...req.cookies.getAll()].map(c => c.name)));
   if (!firmId) return NextResponse.json({ subscription: null });
 
   const db = getServiceSupabase();
@@ -71,5 +72,6 @@ export async function GET(req: NextRequest) {
     });
   }
 
+  console.log("sub route firm data:", JSON.stringify(firm));
   return NextResponse.json({ subscription: firm ?? null });
 }
